@@ -77,6 +77,6 @@ Yêu cầu máy tính đã cài đặt sẵn [Node.js](https://nodejs.org/).
 1.  Mở ứng dụng lên.
 2.  Dán API Key (Gemini hoặc DeepSeek) tương ứng và chọn model mong muốn.
 3.  Click nút **"Tải file .txt"** để chọn file truyện chữ Hán hoặc dán trực tiếp text vào khung.
-4.  Thiết lập các thông số như **Kiểu truyện (Đông phương / Quốc tế)**, **Cỡ chunk**, **Số luồng song song** (khuyên dùng là 2 luồng để tránh dính giới hạn API của DeepSeek).
+4.  Thiết lập các thông số như **Kiểu truyện (Đông phương / Quốc tế)**, **Số lượng**, **Số luồng song song** (khuyên dùng là 2 luồng để tránh dính giới hạn API của DeepSeek).
 5.  Bấm **"Bắt đầu Trích Xuất"** và theo dõi tiến độ chạy, lượng token tiêu hao & tiền VNĐ nhảy trực tiếp trên màn hình.
-6.  Khi chạy xong, kiểm tra bảng kết quả, nhấp đúp để sửa nhanh hoặc bấm **"Tải Tất Cả File"** để xuất ra file `Names.txt` và `Names2.txt` sạch sẽ.
+6.  Khi chạy xong, kiểm tra bảng kết quả, nhấp đúp để sửa nhanh hoặc bấm **"Tải Tất Cả File"** để xuất ra file `Names.txt` sạch sẽ.
