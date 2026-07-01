@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI Name Filter - Lọc 2 Lớp Thông Minh</title>
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <!-- CSS Stylesheet -->
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="app-container">
+    
+    <!-- 1. SIDEBAR CÀI ĐẶT (Giao diện cấu hình giống hệt web) -->
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <i data-lucide="sparkles" class="logo-icon"></i>
+        <h2>Cấu Hình Trích Xuất</h2>
+      </div>
+      
+      <!-- Nhập API Keys -->
+      <div class="settings-group card">
+        <label class="group-title"><i data-lucide="key-round"></i> API Keys</label>
+        <div class="input-wrapper">
+          <label for="gemini-key">Google Gemini Key</label>
+          <div class="password-input">
+            <input type="password" id="gemini-key" placeholder="Nhập Gemini API Key...">
+            <button class="toggle-password" type="button" onclick="togglePasswordVisibility('gemini-key')">
+              <i data-lucide="eye"></i>
+            </button>
+          </div>
+        </div>
+        <div class="input-wrapper">
+          <label for="deepseek-key">DeepSeek API Key</label>
+          <div class="password-input">
+            <input type="password" id="deepseek-key" placeholder="Nhập DeepSeek API Key...">
+            <button class="toggle-password" type="button" onclick="togglePasswordVisibility('deepseek-key')">
+              <i data-lucide="eye"></i>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Chọn Provider & Model -->
+      <div class="settings-group card">
+        <label class="group-title"><i data-lucide="palette"></i> AI Model</label>
+        
+        <div class="input-wrapper">
+          <label for="provider-select">Provider</label>
+          <select id="provider-select" onchange="handleProviderChange()">
+            <option value="deepseek" selected>DeepSeek AI</option>
+            <option value="gemini">Google Gemini</option>
+          </select>
+        </div>
+        
+        <div class="input-wrapper">
+          <label for="model-select">Chọn Model</label>
+          <select id="model-select">
+            <!-- Sẽ được fill động bằng javascript -->
+          </select>
+        </div>
+      </div>
+
+      <!-- Novel settings -->
+      <div class="settings-group card">
+        <label class="group-title"><i data-lucide="sliders-horizontal"></i> Kiểu Truyện & Độ Phủ</label>
+        
+        <div class="input-wrapper">
+          <label>Kiểu truyện</label>
+          <div class="toggle-buttons flex-group" id="novel-type-group">
+            <button class="btn-toggle active" data-value="eastern">Đông phương</button>
+            <button class="btn-toggle" data-value="western">Quốc tế</button>
+          </div>
+        </div>
+        
+        <div class="input-wrapper">
+          <label>Độ phủ</label>
+          <div class="toggle-buttons flex-group" id="coverage-group">
+            <button class="btn-toggle" data-value="loose">Cao</button>
+            <button class="btn-toggle active" data-value="balanced">Cân bằng</button>
+            <button class="btn-toggle" data-value="strict">Nghiêm ngặt</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Thông số kỹ thuật -->
+      <div class="settings-group card">
+        <label class="group-title"><i data-lucide="list-checks"></i> Thông Số Hiệu Năng</label>
+        
+        <div class="grid-2-cols">
+          <div class="input-wrapper">
+            <label for="chunk-size">Cỡ chunk</label>
+            <input type="number" id="chunk-size" value="8000" min="500" step="500">
+          </div>
+          <div class="input-wrapper">
+            <label for="chunk-overlap">Lặp lại</label>
+            <input type="number" id="chunk-overlap" value="250" min="0" step="50">
+          </div>
+        </div>
+
+        <div class="grid-2-cols">
+          <div class="input-wrapper">
+            <label for="concurrency">Song song</label>
+            <input type="number" id="concurrency" value="2" min="1" max="10">
+          </div>
+          <div class="input-wrapper">
+            <label for="retries">Thử lại</label>
+            <input type="number" id="retries" value="2" min="1" max="10">
+          </div>
+        </div>
+
+        <div class="input-wrapper">
+          <label for="timeout">Timeout (giây)</label>
+          <input type="number" id="timeout" value="90" min="10">
+        </div>
+        
+        <button class="btn-secondary" id="btn-reset" onclick="resetToDefaults()"><i data-lucide="rotate-ccw"></i> Phục hồi mặc định</button>
+      </div>
+
+      <!-- Mục Luật Sửa Hán Việt đặc biệt -->
+      <div class="settings-group card">
+        <label class="group-title"><i data-lucide="list-checks"></i> Quy Tắc Hán Việt Riêng</label>
+        <p class="desc-text">Thêm quy tắc ghi đè dịch nghĩa Hán Việt cục bộ (Dạng: Han=Viet, mỗi quy tắc 1 dòng):</p>
+        <textarea id="custom-rules" placeholder="Ví dụ:&#10;淬血期=Thối Huyết Kỳ&#10;武者=Võ Giả"></textarea>
+      </div>
+    </aside>
+    
+    <!-- 2. VÙNG HIỂN THỊ CHÍNH (Nơi dán văn bản và xem kết quả) -->
+    <main class="main-content">
+      
+      <!-- Khu vực nhập văn bản -->
+      <section class="section card text-input-section">
+        <div class="section-header">
+          <label class="section-title"><i data-lucide="upload"></i> Văn Bản Tiếng Trung Đầu Vào</label>
+          <div style="display: flex; align-items: center; gap: 12px;">
+            <input type="file" id="file-uploader" accept=".txt" style="display: none;" onchange="handleFileUpload(event)">
+            <button class="btn-secondary" onclick="document.getElementById('file-uploader').click()" style="padding: 6px 12px; font-size: 0.8rem; height: 32px; display: inline-flex; align-items: center; gap: 4px;">
+              <i data-lucide="file-text" style="width: 14px; height: 14px;"></i> Tải file .txt
+            </button>
+            <span class="char-count" id="input-char-count">0 ký tự</span>
+          </div>
+        </div>
+        <textarea id="raw-chinese-text" placeholder="Dán văn bản truyện chữ Hán vào đây để trích xuất tên riêng..."></textarea>
+        <div class="actions-bar">
+          <button class="btn-primary" id="btn-extract" onclick="startExtraction()">
+            <i data-lucide="play"></i> Bắt đầu Trích Xuất Tên Bằng AI
+          </button>
+        </div>
+      </section>
+
+      <!-- Panel Tiến Trình (Hiển thị khi đang chạy) -->
+      <section class="section card progress-section hidden" id="progress-panel">
+        <div class="progress-info">
+          <span id="progress-status">Đang chuẩn bị văn bản...</span>
+          <span id="progress-ratio">0%</span>
+        </div>
+        <div class="progress-stats-row" id="progress-stats-row" style="margin-top: 8px; font-size: 0.85rem; color: var(--text-muted); display: flex; gap: 12px; justify-content: space-between;">
+          <span>Tổng token: <strong id="progress-tokens" style="color: var(--color-primary);">0</strong></span>
+          <span>Chi phí: <strong id="progress-cost" style="color: var(--color-success);">0đ</strong></span>
+        </div>
+        <div class="progress-bar-container">
+          <div class="progress-bar-fill" id="progress-bar-fill" style="width: 0%;"></div>
+        </div>
+        <div class="progress-log" id="progress-log"></div>
+        <div class="actions-bar right-align">
+          <button class="btn-danger" id="btn-cancel" onclick="cancelExtraction()">
+            <i data-lucide="x"></i> Hủy Tiến Trình
+          </button>
+        </div>
+      </section>
+
+      <!-- VÙNG HIỂN THỊ BẢNG KẾT QUẢ HAI CỘT ĐỘC QUYỀN -->
+      <section class="section card results-section hidden" id="results-panel">
+        <div class="results-header">
+          <div class="left-actions">
+            <h3 class="section-title"><i data-lucide="list-checks"></i> Kết Quả Lọc Tên</h3>
+            <div class="search-box">
+              <i data-lucide="search"></i>
+              <input type="text" id="search-filter" placeholder="Tìm kiếm tên..." oninput="filterResultsTable()">
+            </div>
+          </div>
+          <div class="right-actions" style="display: flex; align-items: center; gap: 16px;">
+            <div class="cost-summary-badge" style="background-color: rgba(99, 102, 241, 0.1); border: 1px solid var(--border-color); padding: 8px 12px; border-radius: var(--radius-sm); font-size: 0.85rem; color: var(--text-muted);">
+              <i data-lucide="coins" style="width: 14px; height: 14px; color: var(--color-primary); vertical-align: middle; margin-right: 4px;"></i>
+              Đã tiêu tốn: <strong id="final-tokens" style="color: var(--text-main);">0</strong> tokens (<strong id="final-cost" style="color: var(--color-success);">0đ</strong>)
+            </div>
+            <button class="btn-secondary" onclick="exportBothFiles()"><i data-lucide="download"></i> Tải Tất Cả File</button>
+          </div>
+        </div>
+
+        <div class="columns-container">
+          
+          <!-- Cột 1: TÊN RIÊNG SẠCH (Đã được lọc thông minh) -->
+          <div class="result-column">
+            <div class="column-header clean-header">
+              <span class="badge clean-badge" id="clean-count">0</span>
+              <h4>Tên Riêng Sạch</h4>
+            </div>
+            <div class="table-scroll-container">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Trung</th>
+                    <th>Hán Việt</th>
+                    <th>Loại</th>
+                    <th>Hành động</th>
+                  </tr>
+                </thead>
+                <tbody id="clean-names-body">
+                  <!-- JS chèn các dòng ở đây -->
+                </tbody>
+              </table>
+            </div>
+            <div class="column-footer">
+              <button class="btn-success" onclick="copyColumnToClipboard('clean')"><i data-lucide="copy"></i> Copy Tên Sạch</button>
+              <button class="btn-primary" onclick="downloadColumnFile('clean')"><i data-lucide="download"></i> Tải Names.txt</button>
+            </div>
+          </div>
+
+          <!-- Cột 2: TỪ THƯỜNG / CẢNH GIỚI / RÁC AI -->
+          <div class="result-column">
+            <div class="column-header trash-header">
+              <span class="badge trash-badge" id="trash-count">0</span>
+              <h4>Từ Thường & Nghi Vấn (Rác AI)</h4>
+            </div>
+            <div class="table-scroll-container">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Trung</th>
+                    <th>Hán Việt</th>
+                    <th>Loại</th>
+                    <th>Hành động</th>
+                  </tr>
+                </thead>
+                <tbody id="trash-names-body">
+                  <!-- JS chèn các dòng ở đây -->
+                </tbody>
+              </table>
+            </div>
+            <div class="column-footer">
+              <button class="btn-secondary" onclick="copyColumnToClipboard('trash')"><i data-lucide="copy"></i> Copy Từ Thường</button>
+              <button class="btn-secondary" onclick="downloadColumnFile('trash')"><i data-lucide="download"></i> Tải Names2.txt</button>
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- MODAL SỬA THÔNG TIN DÒNG -->
+  <div class="modal-overlay hidden" id="edit-modal">
+    <div class="modal-card card">
+      <div class="modal-header">
+        <h3>Chỉnh Sửa Từ Vựng</h3>
+        <button class="close-modal" onclick="closeEditModal()"><i data-lucide="x"></i></button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="edit-original-chinese">
+        <input type="hidden" id="edit-original-hanviet">
+        <input type="hidden" id="edit-origin-column">
+        
+        <div class="input-wrapper">
+          <label>Từ tiếng Trung</label>
+          <input type="text" id="edit-chinese-input" readonly class="readonly-input">
+        </div>
+        
+        <div class="input-wrapper">
+          <label for="edit-hanviet-input">Nghĩa Hán Việt</label>
+          <input type="text" id="edit-hanviet-input" placeholder="Ví dụ: Thối Huyết Kỳ">
+        </div>
+
+        <div class="input-wrapper">
+          <label for="edit-category-select">Phân Loại</label>
+          <select id="edit-category-select">
+            <option value="Person">Nhân vật (Person)</option>
+            <option value="Location">Địa danh (Location)</option>
+            <option value="Faction">Môn phái/Bang phái (Faction)</option>
+            <option value="Artifact">Vật phẩm/Khí cụ (Artifact)</option>
+            <option value="Skill">Công pháp/Chiêu thức (Skill)</option>
+            <option value="Title">Chức xưng/Cảnh giới (Title)</option>
+            <option value="Creature">Linh thú/Yêu thú (Creature)</option>
+          </select>
+        </div>
+      </div>
+      <div class="modal-footer actions-bar right-align">
+        <button class="btn-secondary" onclick="closeEditModal()">Hủy</button>
+        <button class="btn-primary" onclick="saveRowEdit()">Lưu thay đổi</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Nhúng các script logic -->
+  <script src="dict_data.js"></script>
+  <script src="filter.js"></script>
+  <script src="api.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
