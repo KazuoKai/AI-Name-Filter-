@@ -11,7 +11,7 @@
   <!-- Lucide Icons -->
   <script src="https://unpkg.com/lucide@latest"></script>
   <!-- CSS Stylesheet -->
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="style.css?v=3">
 </head>
 <body>
   <div class="app-container">
@@ -68,22 +68,48 @@
 
       <!-- Novel settings -->
       <div class="settings-group card">
-        <label class="group-title"><i data-lucide="sliders-horizontal"></i> Kiểu Truyện & Độ Phủ</label>
+        <label class="group-title"><i data-lucide="sliders-horizontal"></i> Kiểu Truyện</label>
         
         <div class="input-wrapper">
           <label>Kiểu truyện</label>
           <div class="toggle-buttons flex-group" id="novel-type-group">
             <button class="btn-toggle active" data-value="eastern">Đông phương</button>
-            <button class="btn-toggle" data-value="western">Quốc tế</button>
+            <button class="btn-toggle" data-value="western" id="btn-western">
+              Quốc tế
+              <span id="spell-count-badge" style="margin-left: 6px; background: rgba(255,255,255,0.15); padding: 2px 6px; border-radius: 4px; font-size: 0.75rem; display: inline-flex; align-items: center; gap: 4px; vertical-align: middle;">
+                <i data-lucide="list" style="width: 12px; height: 12px;"></i> <span id="spell-count-text">2/7</span>
+              </span>
+            </button>
           </div>
         </div>
-        
-        <div class="input-wrapper">
-          <label>Độ phủ</label>
-          <div class="toggle-buttons flex-group" id="coverage-group">
-            <button class="btn-toggle" data-value="loose">Cao</button>
-            <button class="btn-toggle active" data-value="balanced">Cân bằng</button>
-            <button class="btn-toggle" data-value="strict">Nghiêm ngặt</button>
+
+        <!-- Cấu hình spelling quốc tế (ẩn mặc định, hiện khi chọn Quốc tế) -->
+        <div id="western-spelling-config" class="input-wrapper hidden" style="margin-top: 12px;">
+          <label style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 6px; display: block;">
+            Tick loại muốn giữ spelling quốc tế; bỏ tick sẽ dùng Hán Việt:
+          </label>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; background: rgba(0,0,0,0.2); padding: 8px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.05);">
+            <label style="display: flex; align-items: center; gap: 6px; font-size: 0.8rem; cursor: pointer; color: var(--text-color);">
+              <input type="checkbox" class="spell-cat-checkbox" data-value="Person" checked> Nhân vật
+            </label>
+            <label style="display: flex; align-items: center; gap: 6px; font-size: 0.8rem; cursor: pointer; color: var(--text-color);">
+              <input type="checkbox" class="spell-cat-checkbox" data-value="Location" checked> Địa danh
+            </label>
+            <label style="display: flex; align-items: center; gap: 6px; font-size: 0.8rem; cursor: pointer; color: var(--text-color);">
+              <input type="checkbox" class="spell-cat-checkbox" data-value="Faction"> Tông phái
+            </label>
+            <label style="display: flex; align-items: center; gap: 6px; font-size: 0.8rem; cursor: pointer; color: var(--text-color);">
+              <input type="checkbox" class="spell-cat-checkbox" data-value="Artifact"> Vật phẩm
+            </label>
+            <label style="display: flex; align-items: center; gap: 6px; font-size: 0.8rem; cursor: pointer; color: var(--text-color);">
+              <input type="checkbox" class="spell-cat-checkbox" data-value="Skill"> Công pháp
+            </label>
+            <label style="display: flex; align-items: center; gap: 6px; font-size: 0.8rem; cursor: pointer; color: var(--text-color);">
+              <input type="checkbox" class="spell-cat-checkbox" data-value="Title"> Danh hiệu
+            </label>
+            <label style="display: flex; align-items: center; gap: 6px; font-size: 0.8rem; cursor: pointer; color: var(--text-color); grid-column: span 2;">
+              <input type="checkbox" class="spell-cat-checkbox" data-value="Creature"> Sinh vật
+            </label>
           </div>
         </div>
       </div>
@@ -208,6 +234,7 @@
                     <th>Trung</th>
                     <th>Hán Việt</th>
                     <th>Loại</th>
+                    <th>Lặp</th>
                     <th>Hành động</th>
                   </tr>
                 </thead>
@@ -235,6 +262,7 @@
                     <th>Trung</th>
                     <th>Hán Việt</th>
                     <th>Loại</th>
+                    <th>Lặp</th>
                     <th>Hành động</th>
                   </tr>
                 </thead>
@@ -298,9 +326,9 @@
   </div>
 
   <!-- Nhúng các script logic -->
-  <script src="dict_data.js"></script>
-  <script src="filter.js"></script>
-  <script src="api.js"></script>
-  <script src="app.js"></script>
+  <script src="dict_data.js?v=3"></script>
+  <script src="filter.js?v=3"></script>
+  <script src="api.js?v=3"></script>
+  <script src="app.js?v=3"></script>
 </body>
 </html>

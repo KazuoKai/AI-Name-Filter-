@@ -80,8 +80,40 @@ function isProperName(chinese, hanviet, type = "eastern") {
   const viClean = normalizeNFC(hanviet.replace(/[《》]/g, "").trim());
   const viLower = viClean.toLowerCase();
 
-  // 1. Kiểm tra danh sách rác cứng
+  // 1. Kiểm tra danh sách rác cứng & Bẫy lọc rác nâng cao (Lớp 2.2)
   if (commonLowercaseWords.has(viLower) || commonTitles.has(viLower)) {
+    return false;
+  }
+
+  // Lọc các từ chỉ vật phẩm/spell dạng mô tả chung chung có chứa "chi" (之)
+  if (chinese.includes("之") && !chinese.includes("·") && !chinese.includes("•")) {
+    const isGenericOf = chinese.endsWith("门") || chinese.endsWith("书") || chinese.endsWith("箭") || 
+                          chinese.endsWith("刃") || chinese.endsWith("触") || chinese.endsWith("石") || 
+                          chinese.endsWith("水") || chinese.endsWith("火") || chinese.endsWith("光") || 
+                          chinese.endsWith("影") || chinese.endsWith("心") || chinese.endsWith("魂") || 
+                          chinese.endsWith("血") || chinese.endsWith("体") || chinese.endsWith("骨") ||
+                          chinese.endsWith("力") || chinese.endsWith("拥");
+    if (isGenericOf) {
+      return false;
+    }
+  }
+
+  // Sắp xếp các hậu tố rác của vật phẩm, quái vật, kỹ thuật chung
+  const genericSuffixesCN = ["甲", "铠", "靴", "盔", "帽", "戒", "链", "袍", "鞍", "线", "飞弹", "导弹", "火枪", "大炮", "骷髅", "丧尸", "僵尸", "野猪", "药剂", "魔药", "药水", "药草", "灵草", "流"];
+  if (genericSuffixesCN.some(s => chinese.endsWith(s))) {
+    return false;
+  }
+
+  // Lọc các danh từ chung đơn thuần
+  const genericWordsCN = new Set(["精准", "毁灭者", "记录者", "超越者", "掌控者", "撕裂者", "守护者", "漫步者", "探索者", "遗迹", "废墟", "要塞", "堡垒", "战舰", "巨舰", "圣船", "飞船"]);
+  if (genericWordsCN.has(chinese)) {
+    return false;
+  }
+
+  // Kết hợp tiền tố & hậu tố chung
+  const genericPrefixesCN = ["以太", "远古", "死黑", "机械", "吸血", "虚妄", "精神", "心脏", "幽冥", "复活", "记录者", "无面", "血魔"];
+  const genericBaseSuffixes = ["骑士", "巫师", "女巫", "魔女", "怪物", "异兽", "巨兽", "甲虫", "地宫", "墓园", "位面", "高地", "高原", "档案馆", "图书馆", "学院", "要塞", "堡垒", "废墟", "遗迹", "城堡", "庄园", "小屋", "战舰", "古渊", "深渊", "高塔", "环塔", "教团", "学会", "协会", "会", "帮", "教", "阁", "殿", "门", "谷", "城", "域", "学者", "飞船"];
+  if (genericPrefixesCN.some(p => chinese.startsWith(p)) && genericBaseSuffixes.some(s => chinese.endsWith(s))) {
     return false;
   }
 
@@ -99,30 +131,16 @@ function isProperName(chinese, hanviet, type = "eastern") {
   if (words.length === 0) return false;
   const wordsL = words.map(w => w.toLowerCase());
 
-  // 2. Chức nghiệp (đệ tử, vũ giả, cao thủ)
+  // 2. Chức nghiệp (đệ tử)
   if (wordsL.length >= 2) {
     const lastTwo = wordsL.slice(-2).join(" ");
-    if (lastTwo === "đệ tử" || lastTwo === "vũ giả" || lastTwo === "cao thủ") {
+    if (lastTwo === "đệ tử") {
       return false;
     }
-  }
-
-  // 3. Cảnh giới tu luyện (Thối Huyết Kì, Luyện Kình Cảnh...)
-  const lastWord = wordsL[wordsL.length - 1];
-  if (wordsL.length >= 2 && ["kì", "kỳ", "cảnh"].includes(lastWord)) {
-    const stagePrefixes = [
-      "thối", "ngưng", "nguyên", "luyện", "thông", "đại", "tiểu", "giả", "phá", 
-      "trọc", "chân", "hậu", "trung", "sơ", "cực", "lộ"
-    ];
-    if (wordsL.length >= 3 || stagePrefixes.includes(wordsL[wordsL.length - 2])) {
-      return false;
-    }
-  }
-  if (wordsL.length >= 2 && wordsL.slice(-2).join(" ") === "cảnh giới") {
-    return false;
   }
 
   // 4. Các loại đồ ăn ("nhục")
+  const lastWord = wordsL[wordsL.length - 1];
   if (lastWord === "nhục") {
     return false;
   }
@@ -133,17 +151,6 @@ function isProperName(chinese, hanviet, type = "eastern") {
     if (beastPrefixes.includes(wordsL[wordsL.length - 2])) {
       return false;
     }
-  }
-
-  // 6. Hô hấp pháp, Đoán luyện pháp
-  if (wordsL.length >= 3) {
-    const lastThree = wordsL.slice(-3).join(" ");
-    if (lastThree === "hô hấp pháp" || lastThree === "đoán luyện pháp") {
-      return false;
-    }
-  }
-  if (["hô hấp pháp", "linh mục pháp"].includes(viLower)) {
-    return false;
   }
 
   // 7. Địa điểm chung viết hoa sai
@@ -251,6 +258,30 @@ function initDictionary() {
   if (!qv && typeof gmDataRaw !== "undefined") {
     qv = Fv(gmDataRaw);
   }
+}
+
+// Tập hợp từ Hán Việt dùng để nhận biết tên riêng tiếng Anh/Latin
+let viDictWords = null;
+function initViDictWords() {
+  if (viDictWords) return;
+  initDictionary();
+  viDictWords = new Set();
+  if (kv) {
+    for (const val of kv.values()) {
+      val.toLowerCase().split(/\s+/).forEach(w => viDictWords.add(w));
+    }
+  }
+  if (qv) {
+    qv.forEach(({ words }) => {
+      words.forEach(w => viDictWords.add(w));
+    });
+  }
+  // Các từ đệm/từ khóa Hán Việt chung dùng trong đặt tên dịch
+  const extra = [
+    "của", "và", "nhà", "người", "đảo", "thác", "tháp", "sân", "vịnh", "giải", "tiếng", "đoàn", "nhóm", "cánh", "đồng", "sau", "trước", "dưới", "trên",
+    "gia", "tộc", "hiệp", "sĩ", "phu", "nhân", "lão", "tiểu", "phố", "thị", "trấn", "núi", "sông", "hồ", "rừng", "lâu", "đài", "vương", "quốc", "lãnh", "địa", "thương", "hội", "quán", "rượu", "đại", "chủ", "giáo", "công", "tước", "bá", "hầu", "nam", "tử", "đông", "nam", "tây", "bắc", "trung", "phái", "bang", "hội"
+  ];
+  extra.forEach(w => viDictWords.add(w));
 }
 
 // Hàm chính tra từ điển dịch Hán-Việt

@@ -71,10 +71,21 @@ document.addEventListener("DOMContentLoaded", () => {
     document.getElementById("input-char-count").innerText = `${textInput.value.length} ký tự`;
   });
   
-  // Thiết lập các nút Toggle cài đặt (Kiểu truyện, Độ phủ)
+  // Thiết lập nút Toggle cài đặt Kiểu truyện
   setupToggleButtons("novel-type-group");
-  setupToggleButtons("coverage-group");
+
+  // Thêm listener cho các checkbox cấu hình spelling quốc tế
+  const spellCheckboxes = document.querySelectorAll(".spell-cat-checkbox");
+  spellCheckboxes.forEach(cb => {
+    cb.addEventListener("change", updateSpellCountBadge);
+  });
+  updateSpellCountBadge();
 });
+
+function updateSpellCountBadge() {
+  const checkedCount = document.querySelectorAll(".spell-cat-checkbox:checked").length;
+  document.getElementById("spell-count-text").innerText = `${checkedCount}/7`;
+}
 
 // Chuyển đổi hiển thị Mật khẩu
 function togglePasswordVisibility(inputId) {
@@ -121,7 +132,14 @@ function resetToDefaults() {
   
   // Reset toggles
   setActiveToggle("novel-type-group", "eastern");
-  setActiveToggle("coverage-group", "balanced");
+  document.getElementById("western-spelling-config").classList.add("hidden");
+  
+  // Reset checkboxes
+  document.querySelectorAll(".spell-cat-checkbox").forEach(cb => {
+    const val = cb.getAttribute("data-value");
+    cb.checked = (val === "Person" || val === "Location");
+  });
+  updateSpellCountBadge();
   
   alert("Đã hoàn tác các tùy chỉnh về thông số mặc định.");
 }
@@ -134,6 +152,17 @@ function setupToggleButtons(groupId) {
     btn.addEventListener("click", () => {
       buttons.forEach(b => b.classList.remove("active"));
       btn.classList.add("active");
+      
+      // Ẩn/hiện panel cấu hình Quốc tế tương ứng
+      if (groupId === "novel-type-group") {
+        const val = btn.getAttribute("data-value");
+        const configPanel = document.getElementById("western-spelling-config");
+        if (val === "western") {
+          configPanel.classList.remove("hidden");
+        } else {
+          configPanel.classList.add("hidden");
+        }
+      }
     });
   });
 }
@@ -212,7 +241,13 @@ async function startExtraction() {
   // Đọc các tham số giao diện
   const modelId = document.getElementById("model-select").value;
   const type = getActiveToggleValue("novel-type-group");
-  const mode = getActiveToggleValue("coverage-group");
+  const mode = "balanced"; // Mặc định cân bằng
+  
+  // Thu thập danh sách category được tick giữ spelling quốc tế
+  const foreignReadingCategories = [];
+  document.querySelectorAll(".spell-cat-checkbox:checked").forEach(cb => {
+    foreignReadingCategories.push(cb.getAttribute("data-value"));
+  });
   
   const chunkSize = parseInt(document.getElementById("chunk-size").value) || 8000;
   const overlap = parseInt(document.getElementById("chunk-overlap").value) || 250;
@@ -279,6 +314,7 @@ async function startExtraction() {
       chunks,
       mode,
       type,
+      foreignReadingCategories,
       concurrency,
       retries,
       timeoutSecs,
@@ -294,7 +330,7 @@ async function startExtraction() {
         updateCostDisplay();
 
         addLogMessage(`Chunk ${index + 1} thành công: tìm thấy ${names.length} thực thể.`);
-        processAndFilterNames(names, type);
+        processAndFilterNames(names, type, foreignReadingCategories);
       },
       onChunkError: (index, error) => {
         if (isCancelled) return;
@@ -311,8 +347,46 @@ async function startExtraction() {
       return;
     }
     
-    // Hoàn thành trích xuất
-    addLogMessage(`Trích xuất hoàn tất! Tổng cộng thu được ${cleanNamesList.length} tên sạch và ${trashNamesList.length} từ thường.`);
+    // Áp dụng bộ lọc nâng cao tần suất + hậu tố cho các danh mục phi nhân vật
+    const finalClean = [];
+    const finalTrash = [...trashNamesList];
+    const genericBaseSuffixes = [
+      "骑士", "巫师", "女巫", "魔女", "怪物", "异兽", "巨兽", "甲虫", "地宫", "墓园", "位面", "高地", "高原", 
+      "档案馆", "图书馆", "学院", "要塞", "堡垒", "废墟", "遗迹", "城堡", "庄园", "小屋", "战舰", "古渊", 
+      "深渊", "高塔", "环塔", "教团", "学会", "协会", "会", "帮", "教", "阁", "殿", "门", "谷", "城", "域", 
+      "学者", "飞船", "甲", "铠", "靴", "盔", "帽", "戒", "链", "袍", "鞍", "线", "飞弹", "导弹", "火枪", 
+      "大炮", "骷髅", "丧尸", "僵尸", "野猪", "药剂", "魔药", "药水", "药草", "灵草", "流", "构装", "炼金术", "章节",
+      "之门", "之书", "之箭", "之刃", "之触", "之吻", "之手", "之盾", "之眼", "之风", "之水", "之火", "之光", "之影", 
+      "之心", "之魂", "之血", "之体", "之骨", "之力", "之拥", "之石", "之花", "之草", "之树", "之林", 
+      "泉", "池", "湖", "山", "峰", "洞", "河", "江", "海", "岛", "林", "树", "花", "草", "石", "血", "骨", 
+      "心", "魂", "体", "法", "术", "诀", "经", "印", "咒", "枪", "剑", "刀", "杖", "棒", "弓", "斧", "铲", 
+      "盾", "鼎", "炉", "卷", "册", "图", "符", "盘", "镜", "珠", "玉", "饰", "冠", "佩", "囊"
+    ];
+    
+    cleanNamesList.forEach(item => {
+      if (item.category !== "Person" && 
+          item.category !== "Location" && 
+          item.category !== "Faction" &&
+          item.category !== "Skill" &&
+          item.category !== "Artifact") {
+        
+        // Không tự ý lọc các danh từ chứa "之" (mệnh danh đặc biệt, sở hữu cách)
+        if (item.chinese.includes("之")) {
+          finalClean.push(item);
+          return;
+        }
+        
+        const hasGenericSuffix = genericBaseSuffixes.some(s => item.chinese.endsWith(s));
+        if (item.count === 1 && hasGenericSuffix) {
+          finalTrash.push(item);
+          return;
+        }
+      }
+      finalClean.push(item);
+    });
+    
+    cleanNamesList = finalClean;
+    trashNamesList = finalTrash;
     
     // Cập nhật giao diện bảng kết quả
     renderTables();
@@ -360,7 +434,9 @@ function updateProgressBar(percent, completed, total) {
 }
 
 // Xử lý lọc tên riêng lớp 2 và gom nhóm
-function processAndFilterNames(namesArray, type) {
+function processAndFilterNames(namesArray, type, foreignReadingCategories) {
+  const foreignCats = Array.isArray(foreignReadingCategories) ? foreignReadingCategories : [];
+  
   namesArray.forEach(item => {
     if (!item.chinese || !item.hanviet) return;
     
@@ -372,11 +448,24 @@ function processAndFilterNames(namesArray, type) {
     // Áp dụng luật Sửa Hán Việt ghi đè (Lớp 2.1)
     if (customRulesMap.has(cn)) {
       vi = customRulesMap.get(cn);
-    } else if (type === "eastern") {
-      // Tra cứu từ điển Hán Việt local để đồng bộ dịch nghĩa chuẩn xác 100% như web gốc
-      const dictTranslation = translateChineseToHanViet(cn);
-      if (dictTranslation) {
-        vi = dictTranslation;
+    } else {
+      const isForeignCat = type === "western" && foreignCats.includes(cat);
+      if (isForeignCat) {
+        // Kiểm tra xem nghĩa của AI trả về có phải tiếng Anh/Latin không (chứa chữ cái không dấu, gạch ngang, khoảng trắng)
+        const hasLatinLetters = /[a-zA-Z]/.test(vi);
+        if (!hasLatinLetters) {
+          // AI không trả về Latin, dùng Hán Việt làm phương án dự phòng
+          const dictTranslation = translateChineseToHanViet(cn);
+          if (dictTranslation) {
+            vi = dictTranslation;
+          }
+        }
+      } else {
+        // Đông phương hoặc category không giữ spelling -> Tra cứu từ điển Hán Việt local
+        const dictTranslation = translateChineseToHanViet(cn);
+        if (dictTranslation) {
+          vi = dictTranslation;
+        }
       }
     }
     
@@ -443,6 +532,7 @@ function renderColumnTable(tbodyId, list, colType) {
       <td class="chinese-cell" title="${item.chinese}">${item.chinese}</td>
       <td class="hanviet-cell">${item.hanviet}</td>
       <td><span class="${catClass}">${getCategoryLabel(item.category)}</span></td>
+      <td style="text-align: center; color: var(--text-muted); font-size: 0.85rem;">${item.count}</td>
       <td>
         <div class="row-actions">
           ${moveBtnHtml}

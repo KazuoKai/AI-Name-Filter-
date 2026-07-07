@@ -34,19 +34,44 @@ function splitTextIntoChunks(text, chunkSize, overlap) {
 }
 
 // Xây dựng prompt động dựa trên chế độ độ phủ và loại truyện
-function buildSystemPrompt(mode, type) {
+function buildSystemPrompt(mode, type, foreignReadingCategories) {
   const schema = 'Schema: {"names":[{"chinese":"中文原文","hanviet":"Vietnamese display name","reading":"hanviet|foreign","category":"Person|Location|Faction|Artifact|Skill|Title|Creature","description":"","count":estimated_occurrences_in_this_chunk}]}';
   
-  const typeRules = type === "western" ? [
-    "- This text contains international/Western names, Japanese, Korean, or mixed settings (e.g., superhero, sci-fi, modern urban, or European-like fantasy novels).",
-    "- For Western transliterated names, set \"reading\" to \"foreign\" and recover the original Latin/English spelling in \"hanviet\". Bad: \"La Bá Đặc\", \"Mặc Khâu Lợi\". Good: \"Robert\", \"Mercury\".",
-    "- For Japanese names, use Hepburn-style romanization (e.g. Natsume Chikage over Hạ Mục Thiên Cảnh, Fujiwara Aoi over Đằng Nguyên Quỳ)."
-  ] : [
-    '- Set "reading" to "hanviet" for every extracted entity.',
-    '- This text is Eastern/Chinese fantasy. The "hanviet" field must be Vietnamese Sino-reading with full Vietnamese diacritics, title case with spaces.',
-    "- Never output unaccented romanization for Eastern names. Bad: Truong Sinh Benh, Cuc De, Luu Vu. Good: Trường Sinh Bệnh, Cực Đế, Lưu Vũ.",
-    "- Use common Vietnamese Sino-Vietnamese readings: 天=Thiên, 算=Toán, 老=Lão, 人=Nhân, 王=Vương, 国=Quốc, 山=Sơn, Hải=Hải, 神=Thần, Phong=Phong, Tử=Tử."
-  ];
+  let typeRules = [];
+  if (type === "western") {
+    const foreignCats = Array.isArray(foreignReadingCategories) ? foreignReadingCategories : [];
+    const hanvietCats = ["Person", "Location", "Faction", "Artifact", "Skill", "Title", "Creature"].filter(c => !foreignCats.includes(c));
+    
+    typeRules.push("- This text contains international/Western names, Japanese, Korean, or mixed settings (e.g., superhero, sci-fi, modern urban, or European-like fantasy novels).");
+    
+    if (foreignCats.length > 0) {
+      const d = foreignCats.join(", ");
+      typeRules.push(
+        `- For category [${d}], the "hanviet" field is the Vietnamese display name and should keep the original Latin/English spelling or standard romanization when the Chinese text is a phonetic transliteration. Bad: "La Bá Đặc", "Mặc Khâu Lợi". Good: "Robert", "Mercury".`,
+        `- For category [${d}], set "reading" to "foreign" and recover the original Latin/English spelling for any name that is a Chinese phonetic transliteration of a Western name.`,
+        `- Recognize transliteration characters: Chinese transliterated names are usually made of characters like 克, 斯, 德, 尔, 亚, 特, 罗, 贝, 莉, 纳, 维, 萨, 蒙, 森, 莱, 昂, 迪, 普, 姆, 恩, 杰, 瑞, 约, 翰, 逊, 霍, 华, 雅, etc. (e.g., 维林 -> "Werin/Vilin", 凯恩 -> "Kane/Cain", 莫雷德 -> "Moled/Mored", 月洛缇 -> "Yuelotte", 罗恩 -> "Ron/Rowan", 奥蕾莉亚 -> "Aurelia", 亚格伦 -> "Agren", 费南 -> "Finan", 亚魔斯 -> "Amos", West -> "West", 西拉斯 -> "Silas", 克鲁恩 -> "Krun", 洛薇娜 -> "Rowena", 施密t -> "Schmidt", 施密特 -> "Schmidt", 伦纳德 -> "Leonard", 斯特林 -> "Sterling", 德拉克 -> "Drake", 奥维尔 -> "Orville", 埃文 -> "Evan", 安德鲁 -> "Andrew", 罗莎琳 -> "Rosalind", 弗拉德 -> "Vlad"). Names in category [${d}] composed of these characters in this setting MUST be translated to their Western spelling (e.g., Robert, Al, Flora, Johnson, Howard) in the "hanviet" field.`,
+        `- Do not output pinyin with tones for Western names. Bad: "Xīlāsī", "Luo En". Good: "Silas", "Ron".`,
+        `- For category [${d}] with multi-word Western names separated by a dot (·) or dash (-), translate each segment to its English/Latin equivalent (e.g., 墨丘利 · 安德森 -> "Mercury Anderson", 威利 · 约翰逊 -> "Willy Johnson", 诺娃 · 萨温娜 -> "Nova Savina/Savannah", 凯恩 · 莫雷德 -> "Kane Moled"). Do not mix Western spelling with Sino-Vietnamese reading.`,
+        `- For Japanese personal names in category [${d}] (if Person is selected), use Hepburn-style romanization consistently (e.g. Natsume Chikage over Hạ Mục Thiên Cảnh, Fujiwara Aoi over Đằng Nguyên Quỳ, Kondo Miyuki over Cận Đằng Mỹ Tuyết, Tsukishima Rin over Nguyệt Đảo Lẫm).`,
+        `- For category [${d}] (if Location is selected), do NOT translate location qualifiers literally to English if it makes it unrecognizable. Prepend/append the standard Vietnamese qualifier (e.g., "Vương Quốc", "Lãnh Địa", "Thị Trấn", "Rừng", "Thương Hội", "Quán Rượu"). For example, "瓦雷利亚王国" -> "Vương Quốc Valeria", "金树林" -> "Rừng Kim Thụ", "银爪领" -> "Lãnh Địa Ngân Trảo", "寒风堡小镇" -> "Hàn Phong Bảo Tiểu Trấn".`
+      );
+    }
+    
+    if (hanvietCats.length > 0) {
+      const j = hanvietCats.join(", ");
+      typeRules.push(
+        `- For category [${j}], set "reading" to "hanviet" and use Vietnamese Sino-reading with full Vietnamese diacritics, even in international/Western settings.`,
+        `- Do NOT output Latin/English spelling for category [${j}]. These categories should remain understandable to Vietnamese readers through Hán Việt display names.`
+      );
+    }
+  } else {
+    typeRules = [
+      '- Set "reading" to "hanviet" for every extracted entity.',
+      '- This text is Eastern/Chinese fantasy. The "hanviet" field must be Vietnamese Sino-reading with full Vietnamese diacritics, title case with spaces.',
+      "- Never output unaccented romanization for Eastern names. Bad: Truong Sinh Benh, Cuc De, Luu Vu. Good: Trường Sinh Bệnh, Cực Đế, Lưu Vũ.",
+      "- Use common Vietnamese Sino-Vietnamese readings: 天=Thiên, 算=Toán, 老=Lão, 人=Nhân, Vương=Vương, 国=Quốc, Sơn=Sơn, Hải=Hải, Thần=Thần, Phong=Phong, Tử=Tử."
+    ];
+  }
 
   const modeRules = mode === "strict" ? [
     "Primary goal: same recall as balanced mode, but higher precision by filtering specific noise categories.",
@@ -107,8 +132,8 @@ async function fetchWithTimeout(url, options, timeoutMs) {
 }
 
 // Gửi yêu cầu trích xuất cho 1 chunk
-async function extractChunk({ provider, apiKey, modelId, text, mode, type, chunkIndex, totalChunks, timeoutSecs }) {
-  const systemPrompt = buildSystemPrompt(mode, type);
+async function extractChunk({ provider, apiKey, modelId, text, mode, type, foreignReadingCategories, chunkIndex, totalChunks, timeoutSecs }) {
+  const systemPrompt = buildSystemPrompt(mode, type, foreignReadingCategories);
   const timeoutMs = timeoutSecs * 1000;
   
   if (provider === "gemini") {
@@ -255,6 +280,7 @@ async function runParallelExtraction({
   chunks,
   mode,
   type,
+  foreignReadingCategories,
   concurrency,
   retries,
   timeoutSecs,
@@ -290,6 +316,7 @@ async function runParallelExtraction({
             text: task.text,
             mode,
             type,
+            foreignReadingCategories,
             chunkIndex: task.index,
             totalChunks: total,
             timeoutSecs
