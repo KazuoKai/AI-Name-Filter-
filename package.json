@@ -3,34 +3,15 @@
   "productName": "AI Name Filter",
   "version": "1.0.0",
   "description": "AI Name Filter - Lọc 2 Lớp Thông Minh",
-  "main": "main.js",
+  "main": "server.js",
   "scripts": {
-    "start": "electron .",
-    "pack": "electron-builder build --win"
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "cors": "^2.8.5"
   },
   "keywords": [],
   "author": "",
-  "license": "ISC",
-  "devDependencies": {
-    "electron": "^28.2.0",
-    "electron-builder": "^24.9.1"
-  },
-  "build": {
-    "appId": "com.nameextractor.app",
-    "win": {
-      "target": [
-        "portable"
-      ],
-      "icon": "icon.ico"
-    },
-    "directories": {
-      "output": "dist"
-    },
-    "files": [
-      "**/*",
-      "!dist/**/*",
-      "!node_modules/electron/**/*",
-      "!node_modules/electron-builder/**/*"
-    ]
-  }
+  "license": "ISC"
 }
