@@ -74,19 +74,15 @@
           <label>Kiểu truyện</label>
           <div class="toggle-buttons flex-group" id="novel-type-group">
             <button class="btn-toggle active" data-value="eastern">Đông phương</button>
-            <button class="btn-toggle" data-value="western" id="btn-western">
-              Quốc tế
-              <span id="spell-count-badge" style="margin-left: 6px; background: rgba(255,255,255,0.15); padding: 2px 6px; border-radius: 4px; font-size: 0.75rem; display: inline-flex; align-items: center; gap: 4px; vertical-align: middle;">
-                <i data-lucide="list" style="width: 12px; height: 12px;"></i> <span id="spell-count-text">2/7</span>
-              </span>
-            </button>
+            <button class="btn-toggle" data-value="anime" id="btn-anime">Nhật - Hàn (Anime)</button>
+            <button class="btn-toggle" data-value="western" id="btn-western">Tây Huyễn (Quốc tế)</button>
           </div>
         </div>
 
-        <!-- Cấu hình spelling quốc tế (ẩn mặc định, hiện khi chọn Quốc tế) -->
+        <!-- Cấu hình spelling quốc tế / Nhật - Hàn (ẩn mặc định, hiện khi chọn Anime hoặc Quốc tế) -->
         <div id="western-spelling-config" class="input-wrapper hidden" style="margin-top: 12px;">
           <label style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 6px; display: block;">
-            Tick loại muốn giữ spelling quốc tế; bỏ tick sẽ dùng Hán Việt:
+            Tick chọn loại giữ spelling Anime / Quốc tế (bỏ tick sẽ dùng Hán Việt):
           </label>
           <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; background: rgba(0,0,0,0.2); padding: 8px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.05);">
             <label style="display: flex; align-items: center; gap: 6px; font-size: 0.8rem; cursor: pointer; color: var(--text-color);">
@@ -148,11 +144,24 @@
         <button class="btn-secondary" id="btn-reset" onclick="resetToDefaults()"><i data-lucide="rotate-ccw"></i> Phục hồi mặc định</button>
       </div>
 
-      <!-- Mục Luật Sửa Hán Việt đặc biệt -->
+      <!-- Mục Từ Điển Tích Lũy -->
       <div class="settings-group card">
-        <label class="group-title"><i data-lucide="list-checks"></i> Quy Tắc Hán Việt Riêng</label>
-        <p class="desc-text">Thêm quy tắc ghi đè dịch nghĩa Hán Việt cục bộ (Dạng: Han=Viet, mỗi quy tắc 1 dòng):</p>
-        <textarea id="custom-rules" placeholder="Ví dụ:&#10;淬血期=Thối Huyết Kỳ&#10;武者=Võ Giả"></textarea>
+        <label class="group-title"><i data-lucide="book-open"></i> Từ Điển Tích Lũy (names.txt)</label>
+        <p class="desc-text">Nạp file từ điển đã tích lũy từ các chương trước để tự động áp dụng nghĩa và gộp từ mới:</p>
+        <div class="flex-group" style="gap: 8px;">
+          <input type="file" id="dict-uploader" accept=".txt" style="display: none;" onchange="handleDictUpload(event)">
+          <button class="btn-secondary" onclick="document.getElementById('dict-uploader').click()" style="width: 100%; justify-content: center; height: 36px; font-size: 0.85rem; display: inline-flex; align-items: center; gap: 6px;">
+            <i data-lucide="folder-open" style="width: 16px; height: 16px;"></i> Chọn file từ điển cũ
+          </button>
+        </div>
+        <p class="desc-text" id="dict-upload-status" style="margin-top: 6px; font-weight: 600; color: #a78bfa; font-size: 0.8rem;"></p>
+      </div>
+
+      <!-- Mục Từ Bỏ Qua (Cấm Trích Xuất) -->
+      <div class="settings-group card">
+        <label class="group-title"><i data-lucide="shield-alert"></i> Từ Bỏ Qua (Cấm trích xuất)</label>
+        <p class="desc-text">Nhập danh sách từ muốn loại bỏ hoàn toàn khỏi kết quả (mỗi dòng 1 từ, Trung hoặc Việt):</p>
+        <textarea id="custom-rules" placeholder="Ví dụ:&#10;灭世&#10;序列&#10;自信&#10;服气"></textarea>
       </div>
     </aside>
     
@@ -326,9 +335,9 @@
   </div>
 
   <!-- Nhúng các script logic -->
-  <script src="dict_data.js?v=3"></script>
-  <script src="filter.js?v=3"></script>
-  <script src="api.js?v=3"></script>
-  <script src="app.js?v=3"></script>
+  <script src="dict_data.js?v=32"></script>
+  <script src="filter.js?v=32"></script>
+  <script src="api.js?v=32"></script>
+  <script src="app.js?v=32"></script>
 </body>
 </html>

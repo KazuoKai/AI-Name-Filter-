@@ -38,30 +38,51 @@ function buildSystemPrompt(mode, type, foreignReadingCategories) {
   const schema = 'Schema: {"names":[{"chinese":"中文原文","hanviet":"Vietnamese display name","reading":"hanviet|foreign","category":"Person|Location|Faction|Artifact|Skill|Title|Creature","description":"","count":estimated_occurrences_in_this_chunk}]}';
   
   let typeRules = [];
-  if (type === "western") {
+  if (type === "western" || type === "anime") {
     const foreignCats = Array.isArray(foreignReadingCategories) ? foreignReadingCategories : [];
     const hanvietCats = ["Person", "Location", "Faction", "Artifact", "Skill", "Title", "Creature"].filter(c => !foreignCats.includes(c));
     
-    typeRules.push("- This text contains international/Western names, Japanese, Korean, or mixed settings (e.g., superhero, sci-fi, modern urban, or European-like fantasy novels).");
-    
-    if (foreignCats.length > 0) {
-      const d = foreignCats.join(", ");
-      typeRules.push(
-        `- For category [${d}], the "hanviet" field is the Vietnamese display name and should keep the original Latin/English spelling or standard romanization when the Chinese text is a phonetic transliteration. Bad: "La Bá Đặc", "Mặc Khâu Lợi". Good: "Robert", "Mercury".`,
-        `- For category [${d}], set "reading" to "foreign" and recover the original Latin/English spelling for any name that is a Chinese phonetic transliteration of a Western name.`,
-        `- Recognize transliteration characters: Chinese transliterated names are usually made of characters like 克, 斯, 德, 尔, 亚, 特, 罗, 贝, 莉, 纳, 维, 萨, 蒙, 森, 莱, 昂, 迪, 普, 姆, 恩, 杰, 瑞, 约, 翰, 逊, 霍, 华, 雅, etc. (e.g., 维林 -> "Werin/Vilin", 凯恩 -> "Kane/Cain", 莫雷德 -> "Moled/Mored", 月洛缇 -> "Yuelotte", 罗恩 -> "Ron/Rowan", 奥蕾莉亚 -> "Aurelia", 亚格伦 -> "Agren", 费南 -> "Finan", 亚魔斯 -> "Amos", West -> "West", 西拉斯 -> "Silas", 克鲁恩 -> "Krun", 洛薇娜 -> "Rowena", 施密t -> "Schmidt", 施密特 -> "Schmidt", 伦纳德 -> "Leonard", 斯特林 -> "Sterling", 德拉克 -> "Drake", 奥维尔 -> "Orville", 埃文 -> "Evan", 安德鲁 -> "Andrew", 罗莎琳 -> "Rosalind", 弗拉德 -> "Vlad"). Names in category [${d}] composed of these characters in this setting MUST be translated to their Western spelling (e.g., Robert, Al, Flora, Johnson, Howard) in the "hanviet" field.`,
-        `- Do not output pinyin with tones for Western names. Bad: "Xīlāsī", "Luo En". Good: "Silas", "Ron".`,
-        `- For category [${d}] with multi-word Western names separated by a dot (·) or dash (-), translate each segment to its English/Latin equivalent (e.g., 墨丘利 · 安德森 -> "Mercury Anderson", 威利 · 约翰逊 -> "Willy Johnson", 诺娃 · 萨温娜 -> "Nova Savina/Savannah", 凯恩 · 莫雷德 -> "Kane Moled"). Do not mix Western spelling with Sino-Vietnamese reading.`,
-        `- For Japanese personal names in category [${d}] (if Person is selected), use Hepburn-style romanization consistently (e.g. Natsume Chikage over Hạ Mục Thiên Cảnh, Fujiwara Aoi over Đằng Nguyên Quỳ, Kondo Miyuki over Cận Đằng Mỹ Tuyết, Tsukishima Rin over Nguyệt Đảo Lẫm).`,
-        `- For category [${d}] (if Location is selected), do NOT translate location qualifiers literally to English if it makes it unrecognizable. Prepend/append the standard Vietnamese qualifier (e.g., "Vương Quốc", "Lãnh Địa", "Thị Trấn", "Rừng", "Thương Hội", "Quán Rượu"). For example, "瓦雷利亚王国" -> "Vương Quốc Valeria", "金树林" -> "Rừng Kim Thụ", "银爪领" -> "Lãnh Địa Ngân Trảo", "寒风堡小镇" -> "Hàn Phong Bảo Tiểu Trấn".`
-      );
+    if (type === "anime") {
+      typeRules.push("- This text is a Japanese/Korean Anime, Light Novel, Manhwa, Manga, or Anime-crossover novel (e.g., Hokage, One Piece, Bleach, Dragon Ball, Solo Leveling, Fate, Genshin, Isekai, Urban Anime).");
+      if (foreignCats.length > 0) {
+        const d = foreignCats.join(", ");
+        typeRules.push(
+          `- For category [${d}], the "hanviet" field is the Vietnamese display name and should keep the original Latin/English spelling, Japanese Hepburn romanization, or Korean romanization.`,
+          `- For category [${d}], set "reading" to "foreign" and recover original Romanized spelling for any Japanese/Korean/Western transliteration.`,
+          `- For Person names in category [${d}]: Use Hepburn-style Japanese romanization or standard Korean romanization (e.g., "Naruto" over "Nam Đấu", "Sasuke" over "Vũ Trí Ba Tá Trợ", "Hidan" over "Phi Đoạn", "Kakuzu" over "Giác Đô", "Sung Jinwoo" over "Thành Chấn Vũ", "Gojo Satoru" over "Ngũ Điều Ngộ", "Marco" over "Mã Nhĩ Khoa", "Imu" over "Y Mỗ", "Danzo" over "Đoàn Tàng", "Minato", "Kushina", "Saito", "Goku", "Rimuru", "Luffy", "Zoro").`,
+          `- For Skill / Ability names in category [${d}]: Keep Anime skill/technique names in Romanized/English form if it is an anime skill (e.g., "Rasengan", "Chidori", "Amaterasu", "Bankai", "Excalibur", "Gate of Babylon", "Getsuga Tensho", "Unlimited Blade Works", "Kamehameha", "Eight Gates", "Chakra", "Byakugan" over "Bạch Nhãn", "Sharingan" over "Tả Luân Nhãn").`,
+          `- Recognize transliteration characters & famous Anime entities: (e.g., 飞段 -> Hidan, 角都 -> Kakuzu, 又旅 -> Matatabi, 蛞蝓 -> Katsuya / Sên Thần, 白眼 -> Byakugan, 鸣人 -> Naruto, 波风水门 -> Minato, 宇智波 -> Uchiha, 写轮眼 -> Sharingan, 万花筒写轮眼 -> Mangekyou Sharingan, 八门遁甲 -> Eight Gates, 查克拉 -> Chakra, 团藏 -> Danzo, 根部 -> Foundation/Root, 马尔科 -> Marco, 伊姆 -> Imu, 白胡子 -> Whitebeard, 黑胡子海贼团 -> Blackbeard Pirates, 洛克斯海贼团 -> Rocks Pirates, 莫比迪克号 -> Moby Dick).`,
+          `- IMPORTANT: For Chinese names in Japanese/Korean Anime setting that do NOT have an official Japanese/Western anime name (e.g. 泰坦 -> "Thái Thản", 言少哲 -> "Ngôn Thiếu Triết", 梦红尘 -> "Mộng Hồng Trần", 牛天 -> "Ngưu Thiên", 穆恩 -> "Mục Ân"), ALWAYS output full Vietnamese Sino-reading (Hán Việt) WITH FULL DIACRITICS/ACCENTS (e.g. "Thái Thản", "Ngôn Thiếu Triết", "Mộng Hồng Trần", "Ngưu Thiên", "Mục Ân"). NEVER drop diacritics / accents for Chinese Hán-Việt names.`,
+          `- ALWAYS capitalize the first letter of every word in the "hanviet" display name (e.g. "Naruto", "Minh Nhân", "Đoàn Tàng", "Mã Nhĩ Khoa", "Hắc Hồ Tử Hải Tặc Đoàn").`,
+          `- Do not output pinyin with tones for Western/Anime names. Bad: "Xīlāsī", "Luo En". Good: "Silas", "Ron".`,
+          `- For multi-word foreign names separated by a dot (·) or dash (-), translate each segment to its English/Latin/Romanized equivalent (e.g., 墨丘利 · 安德森 -> "Mercury Anderson"). Do not mix foreign spelling with Sino-Vietnamese reading.`
+        );
+      }
+    } else {
+      typeRules.push("- This text contains international/Western names, settings (e.g., superhero, sci-fi, modern urban, or European-like Western fantasy/mythology novels).");
+      if (foreignCats.length > 0) {
+        const d = foreignCats.join(", ");
+        typeRules.push(
+          `- For category [${d}], the "hanviet" field is the Vietnamese display name and should recover and keep the original English/Latin spelling instead of Hán Việt.`,
+          `- For category [${d}], set "reading" to "foreign" and recover original Romanized/English spelling for any Western transliteration.`,
+          `- For Person names in category [${d}]: Use standard English/Western romanization (e.g., "Harry Potter" over "Cáp Lợi Ba Đặc" or "Cáp Lợi", "Lucifer" over "Lộ Tây Pháp", "Arthur" over "Á Sắt", "Silas" over "Tây Lạp Tư", "Ron" over "La Ân", "Hermione" over "Hách Mẫn" or "Mẫn Mẫn", "Dumbledore" over "Đặng Bố Lợi Đa", "Grindelwald" over "Cách Lâm Đức Ốc", "Voldemort" over "Phục Địa Ma", "Snape" over "Tư Nội Phổ", "Alice" over "Ái Lệ Ti", "Bob" over "Ba Bố", "Charlie" over "Tra Lý", "David" over "Đại Vệ", "Edward" over "Ái Đức Hoa", "Frank" over "Pháp Lan Khắc", "Gary" over "Cái Lý", "John" over "Ước Hàn", "Watson" over "Hoa Sinh", "Holmes" over "Phúc Nhĩ Ma Tư", "Renato" over "Lôi Nạp Thác", "Polly" over "Phách Lợi", "Kira" over "Kỳ Lạp", "Dakur" over "Đạt Khố Nhĩ").`,
+          `- For Location/Faction names in category [${d}]: Use standard English spelling for Western places/organizations (e.g., "Hogwarts" over "Hoắc Cách Ốc Tỳ/Hoắc Cách 沃茨", "London" over "Luân Đôn", "New York" over "Nữu Ước", "Vatican" over "Phạn Đế Cương", "Gryffindor" over "Gryffindor/Cách Lai Phân Đa", "Slytherin" over "Slytherin/Tát Lai Phân Đa", "Paris" over "Ba Lê", "Washington" over "Hoa Thịnh Đốn", "Breka" over "Bố Lôi Ca", "Fried" over "Phất Lợi Đức").`,
+          `- For Artifact/Creature/Skill names in category [${d}]: Keep Western artifact/creature/skill names in Romanized/English form (e.g., "Excalibur" over "Ái Khắc Tư Ca Lý Bá", "Dragon" over "Cự Long", "Elf" over "Tinh Linh", "Dwarf" over "Ảo Nhân", "Goblin" over "Ca Bố Lâm", "Vampire" over "Hút Máu Quỷ", "Werewolf" over "Lang Nhân").`,
+          `- Translate Western Syllables aggressively: Translate ALL transliterated foreign names and places to their correct English/Latin spelling (e.g., 罗恩 -> Ron, 亚瑟 -> Arthur, 兰斯 -> Lance, 林恩 -> Lynn/Flynn, 艾伦 -> Alan/Allen, 科林 -> Colin, 马修 -> Matthew, 莫尔 -> Moore, 贝克 -> Baker, 戴维斯 -> Davis, 杰克逊 -> Jackson, 麦克 -> Mike/Mac, 菲利普 -> Philip, 凯文 -> Kevin, 托马斯 -> Thomas, 罗伯特 -> Robert, 詹姆斯 -> James, 玛丽 -> Mary, 杰克 -> Jack, 凯瑟琳 -> Catherine, 莉莉 -> Lily, 维克多 -> Victor, 雷恩 -> Ryan, 修斯 -> Hughes, 修 -> Hugh, 雷纳托 -> Renato, 珀莉 -> Polly, 莱拉丝 -> Lairess, 布雷卡 -> Breka, 弗里德 -> Fried, 琪拉 -> Kira, 达库尔 -> Dakur).`,
+          `- For place names with administrative suffixes in Chinese (e.g. 镇 -> town, 城 -> city, 村 -> village, 国 -> kingdom), translate the transliterated name to English and append the translated suffix in Vietnamese (e.g. 布雷卡镇 -> "Breka Town" or "Breka town", 弗里德城 -> "Fried City" or "Fried city", 圣蒂兰帝国 -> "Saint Tilan Empire"). Do not mix them into Hán-Việt (Bad: "Bố Lôi Ca trấn", "Phất Lợi Đức thành").`,
+          `- Do NOT output Sino-Vietnamese (Hán Việt) or pinyin with tones for transliterated Western names in [${d}]. Bad: "La An", "Luo En", "Luoxi Fa", "Lôi Nạp Thác", "Phách Lợi", "Kỳ Lạp", "Đạt Khố Nhĩ". Good: "Ron", "Lucifer", "Renato", "Polly", "Kira", "Dakur".`,
+          `- IMPORTANT: For Chinese names or Eastern entities in a Western setting that do NOT have a Western name, ALWAYS output full Vietnamese Sino-reading (Hán Việt) WITH FULL DIACRITICS/ACCENTS (e.g. "Tiêu Viêm" over "Xiao Yan"). NEVER drop diacritics / accents for Chinese Hán-Việt names.`,
+          `- ALWAYS capitalize the first letter of every word in the "hanviet" display name (e.g. "Harry Potter", "Gryffindor", "Excalibur", "Arthur", "Renato", "Polly", "Breka Town", "Kira", "Dakur").`,
+          `- For multi-word foreign names separated by a dot (·) or dash (-), translate each segment to its English/Latin/Romanized equivalent (e.g., 墨丘利 · 安德森 -> "Mercury Anderson"). Do not mix foreign spelling with Sino-Vietnamese reading.`
+        );
+      }
     }
     
     if (hanvietCats.length > 0) {
       const j = hanvietCats.join(", ");
       typeRules.push(
-        `- For category [${j}], set "reading" to "hanviet" and use Vietnamese Sino-reading with full Vietnamese diacritics, even in international/Western settings.`,
-        `- Do NOT output Latin/English spelling for category [${j}]. These categories should remain understandable to Vietnamese readers through Hán Việt display names.`
+        `- For category [${j}], set "reading" to "hanviet" and use Vietnamese Sino-reading (Hán Việt) with full diacritics.`,
+        `- Do NOT output Latin/English spelling for category [${j}]. These categories should remain in Hán Việt display names.`
       );
     }
   } else {
@@ -69,7 +90,7 @@ function buildSystemPrompt(mode, type, foreignReadingCategories) {
       '- Set "reading" to "hanviet" for every extracted entity.',
       '- This text is Eastern/Chinese fantasy. The "hanviet" field must be Vietnamese Sino-reading with full Vietnamese diacritics, title case with spaces.',
       "- Never output unaccented romanization for Eastern names. Bad: Truong Sinh Benh, Cuc De, Luu Vu. Good: Trường Sinh Bệnh, Cực Đế, Lưu Vũ.",
-      "- Use common Vietnamese Sino-Vietnamese readings: 天=Thiên, 算=Toán, 老=Lão, 人=Nhân, Vương=Vương, 国=Quốc, Sơn=Sơn, Hải=Hải, Thần=Thần, Phong=Phong, Tử=Tử."
+      "- Use common Vietnamese Sino-Vietnamese readings: 天=Thiên, 算=Toán, 老=Lão, Nhân=Nhân, Vương=Vương, Quốc=Quốc, Sơn=Sơn, Hải=Hải, Thần=Thần, Phong=Phong, Tử=Tử."
     ];
   }
 
@@ -108,6 +129,7 @@ function buildSystemPrompt(mode, type, foreignReadingCategories) {
     "Rules:",
     ...modeRules,
     "- Keep chinese exactly as it appears in the source.",
+    "- Extract all character names (e.g., 方见贤), martial arts techniques/skills/gongfa (e.g., 云极拳, 云无穷拳), weapons, sects, creatures (e.g., 黄金鳄王 instead of 十万年黄金鳄王), and places. Strip surrounding book title quotes 《》, “”, or 【】 and age/duration prefixes (e.g., 十万年, 万年, 千年, 百年) from the extracted Chinese entity.",
     ...typeRules,
     "- Do not merge different Chinese spellings even if they may refer to the same entity.",
     "- Do not drop a valid entity just because its count is 1.",
@@ -210,13 +232,44 @@ async function extractChunk({ provider, apiKey, modelId, text, mode, type, forei
     
     if (!response.ok) {
       const errText = await response.text();
+      // Nếu API trả về lỗi 400 do không hỗ trợ tham số thinking -> Tự động thử lại không có tham số thinking
+      if (response.status === 400 && requestBody.thinking && (errText.toLowerCase().includes("thinking") || errText.toLowerCase().includes("unrecognized"))) {
+        delete requestBody.thinking;
+        const retryResp = await fetchWithTimeout(url, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${apiKey}`
+          },
+          body: JSON.stringify(requestBody)
+        }, timeoutMs);
+        if (!retryResp.ok) {
+          const retryErrText = await retryResp.text();
+          throw new Error(`DeepSeek API Error ${retryResp.status}: ${retryErrText}`);
+        }
+        const data = await retryResp.json();
+        let names = [];
+        if (data.choices && data.choices[0] && data.choices[0].message) {
+          const msg = data.choices[0].message;
+          const contentText = msg.content || msg.reasoning_content || "";
+          const parsed = parseJSONResponse(contentText);
+          names = (parsed && Array.isArray(parsed.names)) ? parsed.names : [];
+        }
+        const usage = data.usage ? {
+          promptTokens: data.usage.prompt_tokens || 0,
+          completionTokens: data.usage.completion_tokens || 0
+        } : { promptTokens: 0, completionTokens: 0 };
+        return { names, usage };
+      }
       throw new Error(`DeepSeek API Error ${response.status}: ${errText}`);
     }
     
     const data = await response.json();
     let names = [];
     if (data.choices && data.choices[0] && data.choices[0].message) {
-      const parsed = parseJSONResponse(data.choices[0].message.content);
+      const msg = data.choices[0].message;
+      const contentText = msg.content || msg.reasoning_content || "";
+      const parsed = parseJSONResponse(contentText);
       names = (parsed && Array.isArray(parsed.names)) ? parsed.names : [];
     }
     const usage = data.usage ? {
@@ -262,11 +315,17 @@ function balanceBraces(str) {
 }
 
 function parseJSONResponse(rawText) {
-  const trimmed = rawText.trim();
+  if (!rawText) return null;
+  // 1. Loại bỏ toàn bộ phần suy luận <think>...</think> của các model DeepSeek R1/V4, Qwen CoT
+  let cleanText = rawText.replace(/<think>[\s\S]*?<\/think>/gi, "").trim();
+  
+  // 2. Gọt bỏ khối mã markdown ```json ... ``` nếu AI tự động bọc lại
+  cleanText = cleanText.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/i, "").trim();
+
   try {
-    return JSON.parse(trimmed);
+    return JSON.parse(cleanText);
   } catch (err) {
-    const balanced = balanceBraces(trimmed);
+    const balanced = balanceBraces(cleanText);
     if (!balanced) throw new Error("Mẫu kết quả AI trả về không chứa JSON hợp lệ.");
     return JSON.parse(balanced);
   }

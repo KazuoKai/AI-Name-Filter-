@@ -13,7 +13,8 @@ const commonLowercaseWords = new Set([
   "hoàng đạo lĩnh vực", "tế đạo lĩnh vực", "tiên vương lĩnh vực", "pháp tắc lôi trì", "chiến tiên chi đạo",
   "vô thượng thần thuật", "nguyên sơ vật chất", "trường sinh chủng", "nguyên thần hợp đạo binh", "lộ nhân giáp",
   "tập kích bất ngờ", "thời quang chi lực", "thi họa tội khôi họa thủ", "vạn gia đăng hỏa", "tương thân tương ái",
-  "đối đầu", "đến đầu", "chương 4674:", "chương 4576:"
+  "đối đầu", "đến đầu", "chương 4674:", "chương 4576:",
+  "vạn sự thắng ý", "tân thời đại", "mễ phấn", "phấn điếm", "tu sĩ", "tu si", "yêu ma", "tu la thần"
 ]);
 
 // 2. Chức xưng, vai vế và danh từ chung hay bị AI viết hoa linh tinh
@@ -49,14 +50,96 @@ const allowedLower = new Set([
   "ibn", "vi", "von", "van", "du", "de", "la", "le", "da", "di", "mac", "mc", "el", "al", "and"
 ]);
 
+// Danh sách Họ phổ biến Trung Quốc (dành cho bộ lọc thông minh 2 chữ)
+const CHINESE_SURNAMES = new Set([
+  "李", "王", "张", "刘", "陈", "杨", "赵", "黄", "周", "吴", "徐", "孙", "胡", "朱", "高", "林", "何", "郭", "马", "罗", 
+  "梁", "宋", "郑", "谢", "韩", "唐", "冯", "于", "董", "萧", "程", "曹", "袁", "邓", "许", "傅", "沈", "曾", "彭", "吕", 
+  "苏", "卢", "蒋", "蔡", "贾", "丁", "魏", "薛", "叶", "阎", "余", "潘", "杜", "戴", "夏", "钟", "汪", "田", "任", "姜", 
+  "范", "方", "石", "姚", "谭", "廖", "邹", "熊", "金", "陆", "郝", "孔", "白", "崔", "康", "毛", "邱", "秦", "江", "史", 
+  "顾", "侯", "邵", "孟", "龙", "万", "段", "雷", "钱", "湯", "尹", "黎", "易", "常", "武", "乔", "贺", "赖", "龚", "文",
+  "司", "慕", "容", "欧", "阳", "诸", "葛", "东", "独", "孤", "尉", "迟", "宫", "姬", "靳", "岳", "斐", "牧", "戚", "裴",
+  "祁", "阮", "祝", "童", "简", "耿", "霍", "盛", "甄", "颜", "禹", "詹", "缪", "温", "屠", "闾", "澹", "台", "冷", "厉",
+  "楚", "墨", "商", "冉", "曲", "莫", "连", "秋", "印", "封", "花", "景", "风", "云", "夜", "南", "北", "向", "宁", "纪", "喻", "安", "鲁", "盖"
+]);
+
+// Hậu tố địa danh/tông phái/pháp bảo/thần thú/võ học hợp lệ
+const PROPER_SUFFIXES = new Set([
+  "国", "省", "市", "县", "镇", "乡", "村", "山", "河", "江", "湖", "海", "岛", "谷", "泉", "溪", "宗", "门", "派", "帮", "教", "阁", "殿", "寺", "院", "庄", "府", "盟", "路", "街", "领", "堡", "园", "区", "峰", "洞", "部", "团", "眼", "甲", "队", "号",
+  "剑", "刀", "枪", "戟", "弓", "鼎", "塔", "印", "镜", "钟", "珠", "琴", "笛", "扇", "鞭", "杖", "符", "阵", "尺", "炉", "龙", "凤", "鹏", "狐", "雀", "麟", "猿", "蛇", "蝶", "蚕", "龟", "兽", "火", "水", "雷", "风", "光", "暗", "冰", "仙", "神", "魔", "圣", "帝", "皇", "武",
+  "拳", "掌", "指", "腿", "爪", "步", "体", "身", "功", "法", "经", "诀", "典", "谱", "录", "篇", "卷", "术", "吟", "曲", "歌", "图", "变", "化", "意", "势", "决", "解"
+]);
+
+// Bộ chữ chuyên dùng phiên âm tên ngoại quốc / anime / light novel
+const TRANSLIT_CHARS = new Set([
+  "克", "斯", "德", "尔", "亚", "特", "罗", "贝", "莉", "纳", "维", "萨", "蒙", "森", "莱", "昂", "迪", "普", "姆", "恩", "杰", "瑞", "约", "翰", "逊", "霍", "华", "雅", "卡", "尼", "奇", "拉", "格", "里", "香", "梅", "露", "莎", "艾", "奥", "巴", "法", "赫", "伦",
+  "伊", "姆", "团", "藏", "鸣", "根", "忍", "叶", "木", "纲", "手", "蛇", "丸", "斑", "柱", "扉", "鼬", "佐", "助", "路", "飞", "索", "隆", "山", "治", "娜", "美", "宾", "凯", "多", "白", "胡", "黑", "贼", "洛", "海", "写", "轮", "眼", "查"
+]);
+
+// Địa danh 2 chữ nổi tiếng không dùng hậu tố chỉ định
+const POPULAR_PLACES = new Set([
+  "大理", "上海", "北京", "东京", "南京", "西藏", "海南", "云南", "魔都", "帝都", "哥谭", "纽约", "香江", "华夏", "九州", "神州", "湘南", "蜀山", "昆仑", "少林", "武当", "峨眉", "咏春", "太极"
+]);
+
 // 4. Các tiền tố báo hiệu cụm danh từ riêng
 const properPrefixes = new Set([
   "đảo", "núi", "thác", "tháp", "sân", "nhà", "người", "phái", "bang", "hội", "quận", "vịnh", "giải", "tiếng", "sông", "đoàn"
 ]);
 
+// Cleans surrounding book title marks / quotes and age/duration prefixes (xx năm) from entities
+function cleanEntityPunctuation(str) {
+  if (!str) return "";
+  let cleaned = str.replace(/^[《“"\'【‹「«\s]+|[》”"\'】›」»\s]+$/g, "").trim();
+  const timePrefixCN = /^(?:[0-9一二三四五六七八九十百千万亿]+\s*年|十万年|百万年|千万年|亿年|万年|千年|百年|十年)\s*/;
+  if (timePrefixCN.test(cleaned)) {
+    cleaned = cleaned.replace(timePrefixCN, "").trim();
+  }
+  return cleaned;
+}
+
 // 5. Chuẩn hóa chuỗi tiếng Việt Unicode dựng sẵn (NFC)
 function normalizeNFC(str) {
   return str.normalize("NFC");
+}
+
+// Bỏ dấu tiếng Việt
+function removeVietnameseTones(str) {
+  if (!str) return "";
+  return str.normalize("NFD")
+            .replace(/[\u0300-\u036f]/g, "")
+            .replace(/đ/g, "d").replace(/Đ/g, "D");
+}
+
+// Kiểm tra xem chuỗi có chứa dấu tiếng Việt hay không
+function hasVietnameseAccents(str) {
+  if (!str) return false;
+  return /[àáảãạăắằẳẵặâấầẩẫậèéẻẽẹêếềểễệìíỉĩịòóỏõọôốồổỗộơớờởỡợùúủũụưứừửữựỳýỷỹỵđÀÁẢÃẠĂẮẰẲẴẶÂẤẦẨẪẬÈÉẺẼẸÊẾỀỂỄỆÌÍỈĨỊÒÓỎÕỌÔỐỒỔỖỘƠỚỜỞỠỢÙÚỦŨỤƯỨỪỬỮỰỲÝỶỸỴĐ]/.test(str);
+}
+
+// Kiểm tra xem chuỗi AI trả về có phải biến thể không dấu của từ Hán Việt từ điển local hay không
+function isUnaccentedHanVietVariant(viAI, dictHV) {
+  if (!viAI || !dictHV) return false;
+  
+  const aiClean = removeVietnameseTones(viAI).toLowerCase().trim();
+  const dictClean = removeVietnameseTones(dictHV).toLowerCase().trim();
+  
+  if (aiClean === dictClean) return true;
+  
+  const aiWords = aiClean.split(/\s+/);
+  const dictWords = dictClean.split(/\s+/);
+  
+  if (aiWords.length === dictWords.length && aiWords.length >= 2) {
+    let matchCount = 0;
+    for (let i = 0; i < aiWords.length; i++) {
+      const w1 = aiWords[i];
+      const w2 = dictWords[i];
+      if (w1 === w2 || (w1.length >= 2 && w2.length >= 2 && (w1.slice(0, 2) === w2.slice(0, 2) || w1.slice(-2) === w2.slice(-2)))) {
+        matchCount++;
+      }
+    }
+    if (matchCount >= aiWords.length - 1) return true;
+  }
+  
+  return false;
 }
 
 function isCapitalizedWord(word) {
@@ -71,18 +154,69 @@ function isAllCaps(word) {
 }
 
 // Hàm chính lọc tên riêng
-function isProperName(chinese, hanviet, type = "eastern") {
-  if (!hanviet) return false;
+function isProperName(chineseRaw, hanvietRaw, type = "eastern") {
+  if (!hanvietRaw) return false;
+
+  const chinese = cleanEntityPunctuation(chineseRaw);
+  const hanviet = cleanEntityPunctuation(hanvietRaw);
+
+  if (!chinese || !hanviet) return false;
+
   if (hanviet.includes("/")) {
     return hanviet.split("/").some(part => isProperName(chinese, part, type));
   }
 
-  const viClean = normalizeNFC(hanviet.replace(/[《》]/g, "").trim());
+  const viClean = normalizeNFC(hanviet);
   const viLower = viClean.toLowerCase();
 
   // 1. Kiểm tra danh sách rác cứng & Bẫy lọc rác nâng cao (Lớp 2.2)
   if (commonLowercaseWords.has(viLower) || commonTitles.has(viLower)) {
     return false;
+  }
+
+  // Đối với truyện Quốc tế (western) hoặc Nhật - Hàn (anime), nếu tên/kỹ năng đã được khôi phục thành dạng phiên âm Latin/Anime
+  // (ví dụ: "Naruto", "Rasengan", "Chidori", "Robert", "Mercury", "Excalibur") thì giữ lại luôn làm tên riêng sạch.
+  if (type === "western" || type === "anime") {
+    // Nếu chứa ký tự Latin chuẩn và viết hoa (không thuộc danh sách rác cứng ở trên)
+    const hasEnglishLetters = /^[a-zA-Z\s·-]+$/.test(viClean);
+    if (hasEnglishLetters && viClean[0] === viClean[0].toUpperCase()) {
+      return true;
+    }
+  }
+
+  // Cấm hoàn toàn từ đơn chỉ có 1 chữ (đối với tên Hán Việt)
+  if (chinese.length === 1 || viClean.split(/\s+/).length === 1) {
+    return false;
+  }
+
+  // Bộ lọc thông minh cho từ 2 chữ Hán (nơi tập trung nhiều rác nhất như 烧烤, 精致)
+  if (chinese.length === 2) {
+    const firstChar = chinese.charAt(0);
+    const lastChar = chinese.charAt(1);
+    
+    const isSurname = CHINESE_SURNAMES.has(firstChar);
+    const isPlaceSuffix = PROPER_SUFFIXES.has(lastChar);
+    const isTranslit = TRANSLIT_CHARS.has(firstChar) || TRANSLIT_CHARS.has(lastChar);
+    const isPopularPlace = POPULAR_PLACES.has(chinese);
+    const isNickname = ["老", "小", "阿"].includes(firstChar);
+    const isDoubleChar = (firstChar === lastChar);
+    const isForeignAllowed = (type === "anime" || type === "western") && (viClean[0] === viClean[0].toUpperCase());
+    
+    // Nếu không thuộc bất kỳ cấu trúc tên riêng nào hợp lệ -> Loại bỏ làm rác
+    if (!isSurname && !isPlaceSuffix && !isTranslit && !isPopularPlace && !isNickname && !isDoubleChar && !isForeignAllowed) {
+      return false;
+    }
+  }
+
+  // Chặn hậu tố địa điểm trường học/đô thị chung đối với các cụm từ từ 3 chữ trở lên
+  if (chinese.length >= 3) {
+    const lastChar = chinese.charAt(chinese.length - 1);
+    
+    // 1. Chặn cơ sở vật chất, trường học, đô thị (ngoại trừ tên phiên âm như 马尔科)
+    const genericFacilitySuffixes = ["室", "馆", "站", "处", "中", "班", "楼", "园", "场", "课", "会", "吧", "店", "粉", "版"];
+    if (genericFacilitySuffixes.includes(lastChar) || (lastChar === "科" && (chinese.endsWith("务科") || chinese.endsWith("政科") || chinese.endsWith("生科") || chinese.endsWith("理科") || chinese.endsWith("文科")))) {
+      return false;
+    }
   }
 
   // Lọc các từ chỉ vật phẩm/spell dạng mô tả chung chung có chứa "chi" (之)
@@ -99,15 +233,41 @@ function isProperName(chinese, hanviet, type = "eastern") {
   }
 
   // Sắp xếp các hậu tố rác của vật phẩm, quái vật, kỹ thuật chung
-  const genericSuffixesCN = ["甲", "铠", "靴", "盔", "帽", "戒", "链", "袍", "鞍", "线", "飞弹", "导弹", "火枪", "大炮", "骷髅", "丧尸", "僵尸", "野猪", "药剂", "魔药", "药水", "药草", "灵草", "流"];
-  if (genericSuffixesCN.some(s => chinese.endsWith(s))) {
+  const genericSuffixesCN = ["铠", "靴", "盔", "帽", "戒", "链", "袍", "鞍", "线", "飞弹", "导弹", "火枪", "大炮", "骷髅", "丧尸", "僵尸", "野猪", "药剂", "魔药", "药水", "药草", "灵草", "流", "骨", "器", "环", "解", "徒", "婆", "带", "卡", "包", "盒", "仪", "考", "力", "纸"];
+  if (genericSuffixesCN.some(s => chinese.endsWith(s)) && !chinese.endsWith("遁甲")) {
     return false;
   }
 
   // Lọc các danh từ chung đơn thuần
-  const genericWordsCN = new Set(["精准", "毁灭者", "记录者", "超越者", "掌控者", "撕裂者", "守护者", "漫步者", "探索者", "遗迹", "废墟", "要塞", "堡垒", "战舰", "巨舰", "圣船", "飞船"]);
+  const genericWordsCN = new Set([
+    "精准", "毁灭者", "记录者", "超越者", "掌控者", "撕裂者", "守护者", "漫步者", "探索者", "遗迹", "废墟", "要塞", "堡垒", "战舰", "巨舰", "圣船", "飞船",
+    "卫生纸", "山洞", "波涛汹涌", "黄金一代", "头号叛徒", "多金小富婆", "三魂核凝聚法", "道种法", "悟道丹",
+    "本命魂环", "魂导器", "唐门暗器", "外附魂骨", "超神器", "乱披风锤法", "自适应魂环", "自凝魂环",
+    "信仰之力", "海神之光", "魂兽探测仪", "十大核心竞争力", "六翼天使武魂", "四大大单属性家族", "尖尾雨燕武魂",
+    "姐姐管得严", "我不是社恐", "性感小舔猫", "蓝电霸王龙家族", "魂师精英大赛", "全大陆高级魂师学院精英大赛",
+    "威压", "契约", "复制", "土和", "铜镜", "奇怪", "自由", "石子", "非凡", "穿梭", "贫民窟", "坊市", "牵引", "风行", "残阳", "大运", "孤狼", "感知", "黑市", "檀香", "世界", "精致", "坐骑", "能量", "起源", "山门", "前世", "白刃", "灭绝", "禁区", "金光", "关中", "不灭", "沉重", "光幕", "了然", "法阵", "炼化", "沉默", "知识", "融合", "桥头", "无敌", "陀螺", "分身", "嘲讽", "虚空", "表哥", "梦魇", "怪物", "存在", "吞噬", "自信", "骄傲", "机制", "机遇", "无礼", "独尊", "复活", "渴望", "生命", "睥睨", "绝望", "修仙", "进贡", "天赋", "灌顶", "归化", "选择", "规则", "成仙", "镇压", "困境", "无犯", "执念", "虚幻", "破限", "顺应", "交换", "勘破", "邪恶", "星辰", "污染", "压制", "分解", "狱卒", "色欲", "黑暗", "预警", "废物", "愤怒", "审判", "贪婪", "轮回", "灭世", "序列", "服气", "操场", "阳光", "时空", "系统", "湮灭", "天幕", "嫉妒", "随风", "诡异", "功法", "侍女", "紫色", "识海", "土地", "玉简", "永恒", "通道", "命运", "大道", "闪烁", "光芒", "尘埃", "火焰", "大小", "传音", "苍生", "老者", "善良", "虚无", "寻常", "短刀", "裁判", "安然", "可能", "情报", "记忆", "一指"
+  ]);
   if (genericWordsCN.has(chinese)) {
     return false;
+  }
+
+  // Chặn từ ngữ hiện đại, câu nói, slang game
+  if (chinese.toLowerCase().includes("buff") || viClean.toLowerCase().includes("buff") || chinese.includes(" ") || chinese.includes("+") || chinese.includes("=")) {
+    return false;
+  }
+
+  // Chặn cụm từ dài hoặc câu có chứa chữ 不 / 得
+  if ((chinese.includes("不") || chinese.includes("得")) && chinese.length >= 4 && !chinese.includes("·") && !chinese.includes("•")) {
+    return false;
+  }
+
+  // Chặn cụm từ quá dài (>= 6 chữ Hán) không phải tên Tây/Anime/Hải tặc đoàn phiên âm
+  if (chinese.length >= 6 && !chinese.includes("·") && !chinese.includes("•") && !viClean.includes("·")) {
+    const isAllowedLongEntity = type === "anime" || type === "western" || 
+      chinese.endsWith("海贼团") || chinese.endsWith("团") || chinese.endsWith("写轮眼") || chinese.endsWith("眼") || chinese.endsWith("号") || chinese.endsWith("阵") || chinese.endsWith("术");
+    if (!isAllowedLongEntity) {
+      return false;
+    }
   }
 
   // Kết hợp tiền tố & hậu tố chung
@@ -115,16 +275,6 @@ function isProperName(chinese, hanviet, type = "eastern") {
   const genericBaseSuffixes = ["骑士", "巫师", "女巫", "魔女", "怪物", "异兽", "巨兽", "甲虫", "地宫", "墓园", "位面", "高地", "高原", "档案馆", "图书馆", "学院", "要塞", "堡垒", "废墟", "遗迹", "城堡", "庄园", "小屋", "战舰", "古渊", "深渊", "高塔", "环塔", "教团", "学会", "协会", "会", "帮", "教", "阁", "殿", "门", "谷", "城", "域", "学者", "飞船"];
   if (genericPrefixesCN.some(p => chinese.startsWith(p)) && genericBaseSuffixes.some(s => chinese.endsWith(s))) {
     return false;
-  }
-
-  // Đối với truyện Quốc tế (western), nếu tên đã được khôi phục thành dạng tiếng Anh/Latin
-  // (ví dụ: "Robert", "Mercury", "Natsume Chikage") thì giữ lại luôn làm tên riêng sạch.
-  if (type === "western") {
-    // Nếu chứa ký tự Latin chuẩn và viết hoa (không thuộc danh sách rác cứng ở trên)
-    const hasEnglishLetters = /^[a-zA-Z\s·-]+$/.test(viClean);
-    if (hasEnglishLetters && viClean[0] === viClean[0].toUpperCase()) {
-      return true;
-    }
   }
 
   const words = viClean.split(/\s+/);
@@ -162,9 +312,9 @@ function isProperName(chinese, hanviet, type = "eastern") {
     return false;
   }
 
-  // 8. Từ đơn
+  // 8. Từ đơn - Đã bị chặn từ đầu hàm, dòng này trả về false để bảo đảm an toàn
   if (words.length === 1) {
-    return isCapitalizedWord(words[0]) && !isAllCaps(words[0]);
+    return false;
   }
 
   // 9. Cụm từ có chữ đầu viết thường nhưng có tiền tố được phép và từ viết hoa đi kèm
@@ -284,6 +434,53 @@ function initViDictWords() {
   extra.forEach(w => viDictWords.add(w));
 }
 
+// Hàm chuẩn hóa viết thường hậu tố bối phận/danh hiệu/chức vụ (ví dụ: Lâm trưởng lão, Mã chủ nhiệm, Trương trưởng phòng)
+function formatHonorifics(text) {
+  if (!text) return "";
+  const honorifics = [
+    // Chức vụ hiện đại / hành chính
+    "phó chủ tịch tỉnh", "chủ tịch tỉnh", "phó tỉnh trưởng", "tỉnh trưởng",
+    "phó chủ tịch", "chủ tịch", "phó thị trưởng", "thị trưởng",
+    "phó giám đốc", "giám đốc", "tổng giám đốc", "phó tổng giám đốc",
+    "phó chủ nhiệm", "chủ nhiệm", "phó trưởng phòng", "trưởng phòng",
+    "phó phòng", "trưởng khoa", "phó khoa", "trưởng ban", "phó ban",
+    "phó hiệu trưởng", "hiệu trưởng", "phó viện trưởng", "viện trưởng",
+    "phó cục trưởng", "cục trưởng", "phó sở trưởng", "sở trưởng",
+    "phó xưởng trưởng", "xưởng trưởng", "phó đội trưởng", "đội trưởng",
+    "phó bí thư", "bí thư", "thủ trưởng", "chủ tịch hội đồng",
+
+    // Hậu tố hành chính địa danh
+    "thị", "thành", "tỉnh", "huyện", "xã", "thôn", "trấn",
+
+    // Tiên hiệp / Tu chân / Bối phận
+    "trưởng lão", "sư huynh", "sư tỷ", "sư muội", "sư đệ", 
+    "đại sư huynh", "đại sư tỷ", "tiền bối", "đạo hữu", 
+    "tỷ", "muội", "huynh", "đệ", "công tử", "phu nhân", "tiểu thư", 
+    "đại nhân", "lão tổ", "chưởng môn", "thành chủ", "môn chủ", 
+    "bang chủ", "gia chủ", "tướng quân", "đệ tử", "võ giả", 
+    "đạo sĩ", "y sư", "pháp sư",
+    
+    "phong chủ", "tông chủ", "động chủ", "cốc chủ", "các chủ", 
+    "đại hội trưởng", "lão sư", "sư phụ", "a di", "tẩu", 
+    "bà bà", "cô cô", "hội trưởng", "đội trưởng", "tộc trưởng", 
+    "lâu chủ", "trang chủ", "phủ chủ", "minh chủ", "điện chủ", 
+    "viện chủ", "đường chủ", "quán chủ", "tự chủ", "lãnh chúa", 
+    "chủ", "phó", "trưởng", "sư", "lão", "bà", "cô", "dì", "chú", "bác"
+  ];
+  
+  honorifics.sort((a, b) => b.length - a.length);
+  
+  const textLower = text.toLowerCase();
+  for (const h of honorifics) {
+    const suffix = " " + h;
+    if (textLower.endsWith(suffix) && textLower.length > suffix.length) {
+      const index = text.length - h.length;
+      return text.slice(0, index) + h;
+    }
+  }
+  return text;
+}
+
 // Hàm chính tra từ điển dịch Hán-Việt
 function translateChineseToHanViet(chineseText) {
   initDictionary();
@@ -305,8 +502,12 @@ function translateChineseToHanViet(chineseText) {
         f = false;
         continue;
       }
-      const d = kv.get(y);
+      let d = kv.get(y);
       if (!d) return "";
+      // Nếu chữ "司" ở cuối từ có độ dài từ 2 chữ Hán trở lên thì dịch thành "ty" thay vì "tư"
+      if (y === "司" && m === o.length - 1 && o.length >= 2) {
+        d = "ty";
+      }
       r.push(d);
       c = true;
       f = false;
@@ -331,5 +532,25 @@ function translateChineseToHanViet(chineseText) {
   }
   
   while (r[r.length - 1] === "·") r.pop();
-  return c ? Im(r.join(" ")) : "";
+  const rawHV = c ? Im(r.join(" ")) : "";
+  const formatted = formatHonorifics(rawHV);
+  return safeReplaceLi(formatted);
+}
+
+// Tập hợp chữ cái tiếng Việt dùng cho Regex kiểm tra ranh giới từ độc lập
+const VI_LETTERS = 'a-zA-Zàáảãạăắằẳẵặâấầẩẫậèéẻẽẹêếềểễệìíỉĩịòóỏõọôốồ ổỗộơớờởỡợùúủũụưứừửữựỳýỷỹỵđÀÁẢÃẠĂẮẰẲẴẶÂẤẦẨẪẬÈÉẺẼẸÊẾỀỂỄỆÌÍỈĨỊÒÓỎÕỌÔỐỒỔỖỘƠỚỜỞỠỢÙÚỦŨỤƯỨỪỬỮỰỲÝỶỸỴĐ';
+const standaloneLiRegex = new RegExp('(?<=^|[^' + VI_LETTERS + '])([Ll]i)(?=$|[^' + VI_LETTERS + '])', 'g');
+
+// Hàm thay thế an toàn: chỉ đổi từ "Li" / "li" khi đứng độc lập hoàn toàn, không đụng vào "Liệt", "Liêm", "Linh", "Liễu"...
+function safeReplaceLi(text) {
+  if (!text) return "";
+  return text.replace(standaloneLiRegex, match => match === "Li" ? "Ly" : "ly");
+}
+
+// Hàm dọn dẹp bản dịch: Chuyển "Li" độc lập thành "Ly" và viết thường hậu tố bối phận/danh hiệu
+function cleanTranslation(vi) {
+  if (!vi) return "";
+  let cleaned = safeReplaceLi(vi);
+  cleaned = formatHonorifics(cleaned);
+  return cleaned;
 }

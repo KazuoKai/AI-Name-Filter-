@@ -1238,7 +1238,7 @@ const ovDataRaw = `蟜=kiểu
 匶=cữu
 匸=hệ
 匹=thất
-区=âu
+区=khu
 医=y
 匼=hạp
 匽=yển
@@ -1364,7 +1364,7 @@ const ovDataRaw = `蟜=kiểu
 去=khứ
 厼=nhĩ
 厾=đốc
-县=huyền
+县=huyện
 叁=tam
 参=tham
 參=tham
@@ -1632,7 +1632,7 @@ const ovDataRaw = `蟜=kiểu
 哦=nga
 哧=xích
 哨=tiếu
-哩=lí
+哩=lý
 哪=na
 哫=túc
 哬=hà
@@ -2720,7 +2720,7 @@ const ovDataRaw = `蟜=kiểu
 娇=kiều
 娈=luyến
 娉=sính
-娌=lí
+娌=lý
 娐=phu
 娑=sa
 娒=mai
@@ -5464,7 +5464,7 @@ const ovDataRaw = `蟜=kiểu
 朘=thuyên
 朙=minh
 望=vọng
-朝=triêu
+朝=triều
 朞=cơ
 期=kì
 朡=tông
@@ -8048,7 +8048,7 @@ const ovDataRaw = `蟜=kiểu
 琁=tuyền
 球=cầu
 琅=lang
-理=lí
+理=lý
 琇=tú
 琈=phu
 琉=lưu
@@ -8149,7 +8149,7 @@ const ovDataRaw = `蟜=kiểu
 璀=thôi
 璁=thông
 璂=ky
-璃=li
+璃=ly
 璄=cảnh
 璅=tỏa
 璆=cầu
@@ -9185,7 +9185,7 @@ const ovDataRaw = `蟜=kiểu
 禸=nhựu
 禹=vũ
 禺=ngu
-离=li
+离=ly
 禼=tiết
 禽=cầm
 禾=hòa
@@ -10053,7 +10053,7 @@ const ovDataRaw = `蟜=kiểu
 縠=hộc
 縡=tể
 縢=đằng
-縣=huyền
+縣=huyện
 縦=túng
 縧=thao
 縨=hoảng
@@ -11215,7 +11215,7 @@ const ovDataRaw = `蟜=kiểu
 莅=lị
 莆=phủ
 莇=trợ
-莉=lị
+莉=ly
 莊=trang
 莋=tạc
 莍=thái
@@ -12241,7 +12241,7 @@ const ovDataRaw = `蟜=kiểu
 裌=giáp
 裍=khổn
 裎=trình
-裏=lí
+裏=lý
 裐=biển
 裑=thận
 裒=bầu
@@ -12257,7 +12257,7 @@ const ovDataRaw = `蟜=kiểu
 裝=trang
 裟=sa
 裠=quần
-裡=lí
+裡=lý
 裢=liên
 裣=liêm
 裤=khố
@@ -14112,7 +14112,7 @@ const ovDataRaw = `蟜=kiểu
 釉=dụ
 释=thích
 釋=thích
-里=lí
+里=lý
 重=trọng
 野=dã
 量=lượng
@@ -14312,7 +14312,7 @@ const ovDataRaw = `蟜=kiểu
 鋬=phạn
 鋭=duệ
 鋮=thành
-鋰=lí
+鋰=lý
 鋲=beng
 鋳=chú
 鋸=cứ
@@ -15096,7 +15096,7 @@ const ovDataRaw = `蟜=kiểu
 雞=kê
 雟=huề
 雠=thù
-離=li
+離=ly
 難=nan
 雤=hạc
 雥=tập
@@ -16095,7 +16095,7 @@ const ovDataRaw = `蟜=kiểu
 鯁=ngạnh
 鯆=phô
 鯈=du
-鯉=lí
+鯉=lý
 鯊=sa
 鯋=sa
 鯑=he
@@ -16243,7 +16243,7 @@ const ovDataRaw = `蟜=kiểu
 鲡=li
 鲢=liên
 鲣=kiên
-鲤=lí
+鲤=lý
 鲥=thì
 鲦=điều
 鲧=cổn
