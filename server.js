@@ -489,14 +489,26 @@ app.post('/api/extract-names', async (req, res) => {
     }
 });
 
-// API: GET /api/ai-config - CÃ¡ÂºÂ¥u hÃƒÂ¬nh AI trung gian cho Name Extractor UI
-app.get('/api/ai-config', (req, res) => {
-    res.json({
-        success: true,
-        baseUrl: BASE_URL,
-        model: MODEL_NAME,
-        apiKey: API_KEYS[0] || ''
-    });
+// API phụ: POST /api/proxy-extract (Bảo vệ web online khỏi lỗi CORS trình duyệt)
+app.post('/api/proxy-extract', async (req, res) => {
+    try {
+        const { targetUrl, headers, body } = req.body;
+        if (!targetUrl) {
+            return res.status(400).json({ success: false, error: 'Thiếu targetUrl' });
+        }
+
+        const fetchOptions = {
+            method: 'POST',
+            headers: headers || { 'Content-Type': 'application/json' },
+            body: typeof body === 'object' ? JSON.stringify(body) : body
+        };
+
+        const response = await fetch(targetUrl, fetchOptions);
+        const resText = await response.text();
+        res.status(response.status).send(resText);
+    } catch (err) {
+        res.status(500).json({ success: false, error: err.message });
+    }
 });
 
 app.use(express.static(APP_DIR));

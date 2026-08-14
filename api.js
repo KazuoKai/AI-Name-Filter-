@@ -137,7 +137,7 @@ function buildSystemPrompt(mode, type, foreignReadingCategories) {
   ].join("\n");
 }
 
-// Gọi API có hỗ trợ Hủy yêu cầu (Timeout)
+// Gọi API có hỗ trợ Hủy yêu cầu (Timeout) & Tự động Proxy khi gặp lỗi CORS trên Web Online
 async function fetchWithTimeout(url, options, timeoutMs) {
   const controller = new AbortController();
   const { signal } = controller;
@@ -149,6 +149,23 @@ async function fetchWithTimeout(url, options, timeoutMs) {
     return response;
   } catch (error) {
     clearTimeout(id);
+    // Nếu gặp lỗi Failed to fetch do CORS trên trình duyệt Web Online -> Tự động chuyển qua Proxy Server trung gian
+    if (error.name !== 'AbortError' && typeof window !== 'undefined' && window.location && window.location.protocol.startsWith('http')) {
+      try {
+        const proxyResp = await fetch('/api/proxy-extract', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            targetUrl: url,
+            headers: options.headers,
+            body: options.body
+          })
+        });
+        return proxyResp;
+      } catch (proxyErr) {
+        throw error;
+      }
+    }
     throw error;
   }
 }
