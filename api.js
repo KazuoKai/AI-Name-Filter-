@@ -258,8 +258,13 @@ async function extractChunk({ provider, apiKey, modelId, text, mode, type, forei
       stream: false
     };
     
-    if (modelId !== "deepseek-reasoner") {
+    if (modelId === "deepseek-reasoner") {
+      delete requestBody.response_format;
+    } else {
       requestBody.response_format = { type: "json_object" };
+      if (modelId && modelId.includes("v4")) {
+        requestBody.thinking = { type: "disabled" };
+      }
     }
     
     const response = await fetchWithTimeout(url, {

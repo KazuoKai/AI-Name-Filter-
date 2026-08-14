@@ -23,23 +23,32 @@
         <h2>Cấu Hình Trích Xuất</h2>
       </div>
       
-      <!-- Nhập API Keys -->
+      <!-- Nhập API Keys cho 3 nền tảng -->
       <div class="settings-group card">
-        <label class="group-title"><i data-lucide="key-round"></i> API Keys</label>
-        <div class="input-wrapper">
-          <label for="gemini-key">Gemini API Key (dự phòng)</label>
+        <label class="group-title"><i data-lucide="key-round"></i> Cấu Hình API Keys</label>
+        <div class="input-wrapper" id="wrapper-gemini-key">
+          <label for="gemini-key">Google Gemini API Key</label>
           <div class="password-input">
-            <input type="password" id="gemini-key" placeholder="Nhập Gemini API Key...">
+            <input type="password" id="gemini-key" placeholder="Nhập Google Gemini Key...">
             <button class="toggle-password" type="button" onclick="togglePasswordVisibility('gemini-key')">
               <i data-lucide="eye"></i>
             </button>
           </div>
         </div>
-        <div class="input-wrapper">
-          <label for="deepseek-key">API Key trung gian</label>
+        <div class="input-wrapper" id="wrapper-deepseek-key">
+          <label for="deepseek-key">DeepSeek Official API Key</label>
           <div class="password-input">
-            <input type="password" id="deepseek-key" placeholder="Nhập API Key trung gian...">
+            <input type="password" id="deepseek-key" placeholder="Nhập DeepSeek Official Key (sk-...)...">
             <button class="toggle-password" type="button" onclick="togglePasswordVisibility('deepseek-key')">
+              <i data-lucide="eye"></i>
+            </button>
+          </div>
+        </div>
+        <div class="input-wrapper" id="wrapper-proxy-key">
+          <label for="proxy-key">API Key Proxy Trung Gian</label>
+          <div class="password-input">
+            <input type="password" id="proxy-key" placeholder="Nhập Key Proxy (để trống nếu dùng mặc định)...">
+            <button class="toggle-password" type="button" onclick="togglePasswordVisibility('proxy-key')">
               <i data-lucide="eye"></i>
             </button>
           </div>

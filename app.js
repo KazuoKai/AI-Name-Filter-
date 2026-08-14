@@ -15,6 +15,8 @@ const modelsMap = {
     { id: "gemini-1.5-flash", label: "gemini-1.5-flash" }
   ],
   deepseek: [
+    { id: "deepseek-v4-flash", label: "deepseek-v4-flash (DeepSeek V4 Siêu tiết kiệm)" },
+    { id: "deepseek-v4-pro", label: "deepseek-v4-pro (DeepSeek V4 Chất lượng cao)" },
     { id: "deepseek-chat", label: "deepseek-chat (DeepSeek V3 Chính thức)" },
     { id: "deepseek-reasoner", label: "deepseek-reasoner (DeepSeek R1 Suy luận)" }
   ],
@@ -233,6 +235,9 @@ function setActiveToggle(groupId, value) {
 function saveSettings() {
   localStorage.setItem("gemini_api_key", document.getElementById("gemini-key").value);
   localStorage.setItem("deepseek_api_key", document.getElementById("deepseek-key").value);
+  if (document.getElementById("proxy-key")) {
+    localStorage.setItem("proxy_api_key", document.getElementById("proxy-key").value);
+  }
   localStorage.setItem("custom_rules", document.getElementById("custom-rules").value);
 }
 
@@ -242,6 +247,9 @@ function loadSettings() {
   }
   if (localStorage.getItem("deepseek_api_key")) {
     document.getElementById("deepseek-key").value = localStorage.getItem("deepseek_api_key");
+  }
+  if (localStorage.getItem("proxy_api_key") && document.getElementById("proxy-key")) {
+    document.getElementById("proxy-key").value = localStorage.getItem("proxy_api_key");
   }
   if (localStorage.getItem("custom_rules")) {
     document.getElementById("custom-rules").value = localStorage.getItem("custom_rules");
@@ -291,10 +299,17 @@ async function startExtraction() {
   }
   
   const provider = document.getElementById("provider-select").value;
-  const apiKey = document.getElementById("deepseek-key").value.trim() || document.getElementById("gemini-key").value.trim();
+  let apiKey = "";
+  if (provider === "gemini") {
+    apiKey = document.getElementById("gemini-key").value.trim();
+  } else if (provider === "deepseek") {
+    apiKey = document.getElementById("deepseek-key").value.trim();
+  } else {
+    apiKey = (document.getElementById("proxy-key") ? document.getElementById("proxy-key").value.trim() : "") || document.getElementById("deepseek-key").value.trim();
+  }
     
-  if (!apiKey) {
-    alert("Vui lòng nhập API Key trung gian!");
+  if (provider !== "proxy" && !apiKey) {
+    alert(`Vui lòng nhập ${provider === "gemini" ? "Google Gemini" : "DeepSeek Official"} API Key!`);
     return;
   }
   
