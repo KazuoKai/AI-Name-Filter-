@@ -489,7 +489,7 @@ app.post('/api/extract-names', async (req, res) => {
     }
 });
 
-// API phụ: POST /api/proxy-extract (Bảo vệ web online khỏi lỗi CORS trình duyệt)
+// API phụ: POST /api/proxy-extract (Bảo vệ web online khỏi lỗi CORS trình duyệt khi dùng Proxy trung gian)
 app.post('/api/proxy-extract', async (req, res) => {
     try {
         const { targetUrl, headers, body } = req.body;

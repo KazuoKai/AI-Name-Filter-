@@ -197,60 +197,153 @@ function loadProxyConfig() {
   return proxyConfigPromise;
 }
 
-// Gửi yêu cầu trích xuất cho 1 chunk (luôn qua trung gian OpenAI-compatible)
+// Gửi yêu cầu trích xuất cho 1 chunk dựa theo Provider được chọn (Gemini, DeepSeek, hoặc Proxy)
 async function extractChunk({ provider, apiKey, modelId, text, mode, type, foreignReadingCategories, chunkIndex, totalChunks, timeoutSecs }) {
   const systemPrompt = buildSystemPrompt(mode, type, foreignReadingCategories);
   const timeoutMs = timeoutSecs * 1000;
-  const config = await loadProxyConfig();
-  const baseUrl = (config.baseUrl || 'https://api.nexusmmo.store/v1').replace(/\/+$/, '');
-  const authKey = config.apiKey || apiKey;
-  const model = modelId || config.model || 'deepseek-v4-flash';
 
-  const url = `${baseUrl}/chat/completions`;
-  const requestBody = {
-    model: model,
-    messages: [
-      { role: "system", content: systemPrompt },
-      { role: "user", content: `Chunk ${chunkIndex + 1}/${totalChunks}:\n${text}` }
-    ],
-    temperature: 0,
-    max_tokens: 16384,
-    response_format: { type: "json_object" },
-    stream: false
-  };
+  if (provider === "gemini") {
+    // 1. Google Gemini API Chính Thức
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelId}:generateContent?key=${apiKey}`;
+    const requestBody = {
+      contents: [
+        {
+          role: "user",
+          parts: [{ text: `${systemPrompt}\n\nChunk ${chunkIndex + 1}/${totalChunks}:\n${text}` }]
+        }
+      ],
+      generationConfig: {
+        responseMimeType: "application/json",
+        temperature: 0
+      }
+    };
+    
+    const response = await fetchWithTimeout(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(requestBody)
+    }, timeoutMs);
+    
+    if (!response.ok) {
+      const errText = await response.text();
+      throw new Error(`Google Gemini Error ${response.status}: ${errText}`);
+    }
+    
+    const data = await response.json();
+    let names = [];
+    if (data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts) {
+      const rawText = data.candidates[0].content.parts.map(p => p.text).join("");
+      const parsed = parseJSONResponse(rawText);
+      names = (parsed && Array.isArray(parsed.names)) ? parsed.names : [];
+    }
+    
+    const usage = data.usageMetadata ? {
+      promptTokens: data.usageMetadata.promptTokenCount || 0,
+      completionTokens: data.usageMetadata.candidatesTokenCount || 0
+    } : { promptTokens: 0, completionTokens: 0 };
+    
+    return { names, usage };
 
-  if (model === "deepseek-reasoner") {
-    delete requestBody.response_format;
+  } else if (provider === "deepseek") {
+    // 2. DeepSeek API Chính Thức (https://api.deepseek.com)
+    const url = "https://api.deepseek.com/chat/completions";
+    const requestBody = {
+      model: modelId || "deepseek-chat",
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: `Chunk ${chunkIndex + 1}/${totalChunks}:\n${text}` }
+      ],
+      temperature: 0,
+      max_tokens: 8192,
+      stream: false
+    };
+    
+    if (modelId !== "deepseek-reasoner") {
+      requestBody.response_format = { type: "json_object" };
+    }
+    
+    const response = await fetchWithTimeout(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${apiKey}`
+      },
+      body: JSON.stringify(requestBody)
+    }, timeoutMs);
+    
+    if (!response.ok) {
+      const errText = await response.text();
+      throw new Error(`DeepSeek API Error ${response.status}: ${errText}`);
+    }
+    
+    const data = await response.json();
+    let names = [];
+    if (data.choices && data.choices[0] && data.choices[0].message) {
+      const msg = data.choices[0].message;
+      const contentText = msg.content || msg.reasoning_content || "";
+      const parsed = parseJSONResponse(contentText);
+      names = (parsed && Array.isArray(parsed.names)) ? parsed.names : [];
+    }
+    const usage = data.usage ? {
+      promptTokens: data.usage.prompt_tokens || 0,
+      completionTokens: data.usage.completion_tokens || 0
+    } : { promptTokens: 0, completionTokens: 0 };
+    
+    return { names, usage };
+
   } else {
-    requestBody.thinking = { type: "disabled" };
+    // 3. Proxy Trung Gian (NexusMMO / DeepSeek V4 Proxy)
+    const config = await loadProxyConfig();
+    const baseUrl = (config.baseUrl || 'https://api.nexusmmo.store/v1').replace(/\/+$/, '');
+    const authKey = config.apiKey || apiKey;
+    const model = modelId || config.model || 'deepseek-v4-flash';
+
+    const url = `${baseUrl}/chat/completions`;
+    const requestBody = {
+      model: model,
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: `Chunk ${chunkIndex + 1}/${totalChunks}:\n${text}` }
+      ],
+      temperature: 0,
+      max_tokens: 16384,
+      response_format: { type: "json_object" },
+      stream: false
+    };
+
+    if (model === "deepseek-reasoner") {
+      delete requestBody.response_format;
+    } else {
+      requestBody.thinking = { type: "disabled" };
+    }
+
+    const response = await fetchWithTimeout(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${authKey}`
+      },
+      body: JSON.stringify(requestBody)
+    }, timeoutMs);
+
+    if (!response.ok) {
+      const errText = await response.text();
+      throw new Error(`API Proxy Error ${response.status}: ${errText}`);
+    }
+
+    const data = await response.json();
+    let names = [];
+    if (data.choices && data.choices[0] && data.choices[0].message) {
+      const parsed = parseJSONResponse(data.choices[0].message.content);
+      names = (parsed && Array.isArray(parsed.names)) ? parsed.names : [];
+    }
+    const usage = data.usage ? {
+      promptTokens: data.usage.prompt_tokens || 0,
+      completionTokens: data.usage.completion_tokens || 0
+    } : { promptTokens: 0, completionTokens: 0 };
+
+    return { names, usage };
   }
-
-  const response = await fetchWithTimeout(url, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "Authorization": `Bearer ${authKey}`
-    },
-    body: JSON.stringify(requestBody)
-  }, timeoutMs);
-
-  if (!response.ok) {
-    const errText = await response.text();
-    throw new Error(`API Proxy Error ${response.status}: ${errText}`);
-  }
-
-  const data = await response.json();
-  let names = [];
-  if (data.choices && data.choices[0] && data.choices[0].message) {
-    const parsed = parseJSONResponse(data.choices[0].message.content);
-    names = (parsed && Array.isArray(parsed.names)) ? parsed.names : [];
-  }
-  const usage = data.usage ? {
-    promptTokens: data.usage.prompt_tokens || 0,
-    completionTokens: data.usage.completion_tokens || 0
-  } : { promptTokens: 0, completionTokens: 0 };
-
-  return { names, usage };
 }
 // Cân bằng dấu ngoặc nhọn để bóc tách chuỗi JSON khi AI bị lỗi thừa text đầu/cuối
 function balanceBraces(str) {

@@ -1,25 +1,33 @@
 // app.js - Điều khiển giao diện (UI) và điều phối tiến trình trích xuất
 
-// Cấu hình Model của 2 hãng
+// Cấu hình Model cho 3 Nền tảng (Google Gemini Chính Thức, DeepSeek Chính Thức, Proxy Trung Gian)
 const modelsMap = {
   gemini: [
+    { id: "gemini-3.6-flash", label: "gemini-3.6-flash (Mới nhất 2026)" },
     { id: "gemini-3.5-flash", label: "gemini-3.5-flash (Nhanh & Tốt nhất)" },
     { id: "gemini-3.5-flash-lite", label: "gemini-3.5-flash-lite (Siêu tiết kiệm)" },
     { id: "gemini-3.5-pro", label: "gemini-3.5-pro (Thông minh nhất)" },
     { id: "gemini-3.1-flash", label: "gemini-3.1-flash" },
     { id: "gemini-3.1-flash-lite", label: "gemini-3.1-flash-lite" },
     { id: "gemini-3.1-pro", label: "gemini-3.1-pro" },
-    { id: "gemini-3.0-flash", label: "gemini-3.0-flash" }
+    { id: "gemini-3.0-flash", label: "gemini-3.0-flash" },
+    { id: "gemini-2.5-flash", label: "gemini-2.5-flash" },
+    { id: "gemini-1.5-flash", label: "gemini-1.5-flash" }
   ],
   deepseek: [
-    { id: "deepseek-v4-flash", label: "deepseek-v4-flash (Siêu tiết kiệm V4)" },
-    { id: "deepseek-v4-pro", label: "deepseek-v4-pro (Chất lượng cao V4)" },
-    { id: "deepseek-reasoner", label: "deepseek-reasoner (R1 - Suy luận)" }
+    { id: "deepseek-chat", label: "deepseek-chat (DeepSeek V3 Chính thức)" },
+    { id: "deepseek-reasoner", label: "deepseek-reasoner (DeepSeek R1 Suy luận)" }
+  ],
+  proxy: [
+    { id: "deepseek-v4-flash", label: "deepseek-v4-flash (V4 Siêu tiết kiệm Proxy)" },
+    { id: "deepseek-v4-pro", label: "deepseek-v4-pro (V4 Chất lượng cao Proxy)" },
+    { id: "deepseek-reasoner", label: "deepseek-reasoner (R1 Proxy)" }
   ]
 };
 
-// Bảng giá token thực tế (USD trên 1 Triệu tokens) công bố tháng 7/2026
+// Bảng giá token thực tế (USD trên 1 Triệu tokens)
 const modelPricing = {
+  "gemini-3.6-flash": { input: 0.15, output: 0.60 },
   "gemini-3.5-flash": { input: 1.50, output: 9.00 },
   "gemini-3.5-flash-lite": { input: 0.25, output: 1.50 },
   "gemini-3.5-pro": { input: 2.00, output: 12.00 },
@@ -27,9 +35,12 @@ const modelPricing = {
   "gemini-3.1-flash-lite": { input: 0.25, output: 1.50 },
   "gemini-3.1-pro": { input: 2.00, output: 12.00 },
   "gemini-3.0-flash": { input: 0.50, output: 3.00 },
+  "gemini-2.5-flash": { input: 0.075, output: 0.30 },
+  "gemini-1.5-flash": { input: 0.075, output: 0.30 },
+  "deepseek-chat": { input: 0.14, output: 0.28 },
+  "deepseek-reasoner": { input: 0.55, output: 2.19 },
   "deepseek-v4-flash": { input: 0.14, output: 0.28 },
-  "deepseek-v4-pro": { input: 0.435, output: 0.87 },
-  "deepseek-reasoner": { input: 0.55, output: 2.19 }
+  "deepseek-v4-pro": { input: 0.435, output: 0.87 }
 };
 
 // State toàn cục của ứng dụng
@@ -130,9 +141,10 @@ function handleProviderChange() {
     opt.value = model.id;
     opt.innerText = model.label;
     
-    // Đặt mặc định khuyên dùng: DeepSeek V4 Flash qua trung gian
-
-    if (provider === "deepseek" && model.id === "deepseek-v4-flash") opt.selected = true;
+    // Đặt mặc định khuyên dùng theo từng provider
+    if (provider === "gemini" && model.id === "gemini-3.6-flash") opt.selected = true;
+    if (provider === "deepseek" && model.id === "deepseek-chat") opt.selected = true;
+    if (provider === "proxy" && model.id === "deepseek-v4-flash") opt.selected = true;
     
     modelSelect.appendChild(opt);
   });
