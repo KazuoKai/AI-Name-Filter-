@@ -4,16 +4,21 @@ const fs = require('fs');
 const path = require('path');
 
 const PORT = process.env.PORT || 4000;
-const BASE_DIR = 'D:\\Proxy';
+const APP_DIR = __dirname;
+const DATA_DIR = path.join(APP_DIR, 'data');
+if (!fs.existsSync(DATA_DIR)) {
+    fs.mkdirSync(DATA_DIR, { recursive: true });
+}
+
 const app = express();
 app.use(cors());
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
-// HÃƒÂ m Ã„â€˜Ã¡Â»Âc danh sÃƒÂ¡ch tÃ¡Â»Â« cÃ¡ÂºÂ¥m / bÃ¡Â»Â qua tÃ¡Â»Â« file D:\Proxy2\data\ignore_rules.txt
+// Hàm đọc danh sách từ cấm / bỏ qua từ file ignore_rules.txt
 function loadIgnoreRules() {
     const ignoreRulesSet = new Set();
-    const rulesFile = `${BASE_DIR}\\data\\ignore_rules.txt`;
+    const rulesFile = path.join(DATA_DIR, 'ignore_rules.txt');
     if (fs.existsSync(rulesFile)) {
         const lines = fs.readFileSync(rulesFile, 'utf-8').split(/\r?\n/);
         lines.forEach(l => {
@@ -24,16 +29,16 @@ function loadIgnoreRules() {
     return ignoreRulesSet;
 }
 
-// Ã¢â€â‚¬Ã¢â€â‚¬ Load isProperName tÃ¡Â»Â« name_extractor_app/filter.js Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+// ── Load isProperName từ filter.js ──────────────────────────────────
 const vm = require('vm');
-const _filterCode = fs.readFileSync('D:\\Proxy\\name_extractor_app\\filter.js', 'utf8');
+const _filterCode = fs.readFileSync(path.join(APP_DIR, 'filter.js'), 'utf8');
 const _filterSandbox = { module: { exports: {} }, exports: {}, console, require };
 vm.createContext(_filterSandbox);
 vm.runInContext(_filterCode, _filterSandbox);
 const isProperName = _filterSandbox.isProperName;
-console.log('Ã¢Å“â€¦ Ã„ÂÃƒÂ£ load filter.js tÃ¡Â»Â« name_extractor_app (bÃ¡Â»â„¢ lÃ¡Â»Âc 4 lÃ¡Â»â€ºp)');
+console.log('✅ Đã load filter.js (bộ lọc 4 lớp)');
 
-// API: POST /api/filter - LÃ¡Â»Âc Names sÃ¡ÂºÂ¡ch bÃ¡ÂºÂ±ng filter.js (4 lÃ¡Â»â€ºp)
+// API: POST /api/filter - Lọc Names sạch bằng filter.js (4 lớp)
 app.post('/api/filter', (req, res) => {
     try {
         const { names = [] } = req.body;
@@ -69,10 +74,10 @@ app.post('/api/filter', (req, res) => {
     }
 });
 
-// API: GET /api/get-ignore - LÃ¡ÂºÂ¥y toÃƒÂ n bÃ¡Â»â„¢ tÃ¡Â»Â« cÃ¡ÂºÂ¥m
+// API: GET /api/get-ignore - Lấy toàn bộ từ cấm
 app.get('/api/get-ignore', (req, res) => {
     try {
-        const rulesFile = `${BASE_DIR}\\data\\ignore_rules.txt`;
+        const rulesFile = path.join(DATA_DIR, 'ignore_rules.txt');
         let text = '';
         if (fs.existsSync(rulesFile)) {
             text = fs.readFileSync(rulesFile, 'utf-8');
@@ -83,10 +88,10 @@ app.get('/api/get-ignore', (req, res) => {
     }
 });
 
-// API: POST /api/save-ignore - ThÃƒÂªm tÃ¡Â»Â« cÃ¡ÂºÂ¥m mÃ¡Â»â€ºi
+// API: POST /api/save-ignore - Thêm từ cấm mới
 app.post('/api/save-ignore', (req, res) => {
     try {
-        const rulesFile = `${BASE_DIR}\\data\\ignore_rules.txt`;
+        const rulesFile = path.join(DATA_DIR, 'ignore_rules.txt');
         let newRules = [];
         if (Array.isArray(req.body.rules)) {
             newRules = req.body.rules;
@@ -115,10 +120,10 @@ app.post('/api/save-ignore', (req, res) => {
     }
 });
 
-// API: GET /api/get-names - Ã„ÂÃ¡Â»Âc danh sÃƒÂ¡ch Names.txt
+// API: GET /api/get-names - Đọc danh sách Names.txt
 app.get('/api/get-names', (req, res) => {
     try {
-        const namesFile = `${BASE_DIR}\\data\\Names.txt`;
+        const namesFile = path.join(DATA_DIR, 'Names.txt');
         let text = '';
         if (fs.existsSync(namesFile)) {
             text = fs.readFileSync(namesFile, 'utf-8');
@@ -129,11 +134,11 @@ app.get('/api/get-names', (req, res) => {
     }
 });
 
-// API: POST /api/save-names - NÃ¡ÂºÂ¡p danh sÃƒÂ¡ch Names sÃ¡ÂºÂ¡ch mÃ¡Â»â€ºi vÃƒÂ o D:\Proxy2\data\Names.txt
+// API: POST /api/save-names - Nạp danh sách Names sạch mới
 app.post('/api/save-names', (req, res) => {
     try {
         const { names = [] } = req.body;
-        const namesFile = `${BASE_DIR}\\data\\Names.txt`;
+        const namesFile = path.join(DATA_DIR, 'Names.txt');
         const existingLines = fs.existsSync(namesFile) ? fs.readFileSync(namesFile, 'utf-8').split(/\r?\n/) : [];
 
         const existingSet = new Set();
@@ -160,7 +165,7 @@ app.post('/api/save-names', (req, res) => {
     }
 });
 
-// Ã¢â€â‚¬Ã¢â€â‚¬ TÃƒÂCH HÃ¡Â»Â¢P AI EXTRACTOR (NEXUSMMO / OPENAI-COMPATIBLE PROXY) (PORT 4000) Ã¢â€â‚¬Ã¢â€â‚¬
+// Ã¢â€ â‚¬Ã¢â€ â‚¬ TÃƒÂ CH HÃ¡Â»Â¢P AI EXTRACTOR (NEXUSMMO / OPENAI-COMPATIBLE PROXY) (PORT 4000) Ã¢â€ â‚¬Ã¢â€ â‚¬
 const RAW_KEYS = process.env.NEXUS_API_KEYS || process.env.API_KEYS || process.env.API_KEY || 'sk-4eed513be74dc270184953c24e8a039be6fbbb49f289a2a72add1cb65424bd5b';
 const API_KEYS = RAW_KEYS.split(',').map(k => k.trim()).filter(Boolean);
 const BASE_URL = (process.env.NEXUS_BASE_URL || process.env.BASE_URL || 'https://api.nexusmmo.store/v1').replace(/\/+$/, '');
@@ -494,8 +499,8 @@ app.get('/api/ai-config', (req, res) => {
     });
 });
 
-app.use(express.static(`${BASE_DIR}\\name_extractor_app`));
+app.use(express.static(APP_DIR));
 
 const server = app.listen(PORT, () => {
-    console.log('Ã¢Å“â€¦ Name Extractor server listening on port 4000 (AI Proxy active - DeepSeek V4 Flash)');
+    console.log(`✅ Name Extractor server listening on port ${PORT}`);
 });
