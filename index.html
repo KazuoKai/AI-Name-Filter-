@@ -27,7 +27,7 @@
       <div class="settings-group card">
         <label class="group-title"><i data-lucide="key-round"></i> API Keys</label>
         <div class="input-wrapper">
-          <label for="gemini-key">Google Gemini Key</label>
+          <label for="gemini-key">Gemini API Key (dự phòng)</label>
           <div class="password-input">
             <input type="password" id="gemini-key" placeholder="Nhập Gemini API Key...">
             <button class="toggle-password" type="button" onclick="togglePasswordVisibility('gemini-key')">
@@ -36,9 +36,9 @@
           </div>
         </div>
         <div class="input-wrapper">
-          <label for="deepseek-key">DeepSeek API Key</label>
+          <label for="deepseek-key">API Key trung gian</label>
           <div class="password-input">
-            <input type="password" id="deepseek-key" placeholder="Nhập DeepSeek API Key...">
+            <input type="password" id="deepseek-key" placeholder="Nhập API Key trung gian...">
             <button class="toggle-password" type="button" onclick="togglePasswordVisibility('deepseek-key')">
               <i data-lucide="eye"></i>
             </button>
@@ -53,8 +53,8 @@
         <div class="input-wrapper">
           <label for="provider-select">Provider</label>
           <select id="provider-select" onchange="handleProviderChange()">
-            <option value="deepseek" selected>DeepSeek AI</option>
-            <option value="gemini">Google Gemini</option>
+            <option value="deepseek" selected>DeepSeek V4 Flash (Trung gian)</option>
+            <option value="gemini">Gemini (Trung gian)</option>
           </select>
         </div>
         
@@ -335,9 +335,9 @@
   </div>
 
   <!-- Nhúng các script logic -->
-  <script src="dict_data.js?v=32"></script>
-  <script src="filter.js?v=32"></script>
-  <script src="api.js?v=32"></script>
-  <script src="app.js?v=32"></script>
+  <script src="dict_data.js?v=31"></script>
+  <script src="filter.js?v=31"></script>
+  <script src="api.js?v=31"></script>
+  <script src="app.js?v=31"></script>
 </body>
 </html>

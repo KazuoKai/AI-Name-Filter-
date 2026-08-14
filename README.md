@@ -25,7 +25,7 @@
 *   **Core Logic:** Vanilla HTML5, CSS3 (Glassmorphism & Harmonious Dark Theme), JavaScript ES6.
 *   **Desktop App:** Electron v28.
 *   **Packager:** Electron Builder (Target: Portable win-x64).
-*   **AI API Integration:** Google Gemini API & DeepSeek API (hỗ trợ hàng đợi chạy song song điều chỉnh luồng, tự động Timeout & Retry).
+*   **AI API Integration:** OpenAI-compatible API qua trung gian (mặc định DeepSeek V4 Flash; hỗ trợ hàng đợi chạy song song, tự động Timeout & Retry, không gọi thẳng DeepSeek/Gemini chính thức).
 
 ---
 
@@ -65,7 +65,7 @@ Yêu cầu máy tính đã cài đặt sẵn [Node.js](https://nodejs.org/).
 ├── main.js           # File kiểm soát tiến trình chạy Electron
 ├── dict_data.js      # Cơ sở dữ liệu từ điển Hán-Việt local
 ├── filter.js         # Bộ lọc rác lớp 2 & Thuật toán dịch nghĩa từ điển
-├── api.js            # Điều phối hàng đợi song song gửi API Gemini/DeepSeek
+├── api.js            # Điều phối hàng đợi song song gửi API qua trung gian OpenAI-compatible
 ├── app.js            # Điều phối hoạt động giao diện, lưu trữ, xuất dữ liệu
 └── package.json      # File khai báo thư viện và script đóng gói
 ```
@@ -75,7 +75,7 @@ Yêu cầu máy tính đã cài đặt sẵn [Node.js](https://nodejs.org/).
 ## 📜 Hướng Dẫn Sử Dụng App
 
 1.  Mở ứng dụng lên.
-2.  Dán API Key (Gemini hoặc DeepSeek) tương ứng và chọn model mong muốn.
+2.  Dán API Key trung gian (hoặc để trống để tự nạp từ server port 4000) và chọn model mong muốn (mặc định DeepSeek V4 Flash).
 3.  Click nút **"Tải file .txt"** để chọn file truyện chữ Hán hoặc dán trực tiếp text vào khung.
 4.  Thiết lập các thông số như **Kiểu truyện (Đông phương / Quốc tế)**, **Cỡ chunk**, **Số luồng song song** (khuyên dùng là 2 luồng để tránh dính giới hạn API của DeepSeek).
 5.  Bấm **"Bắt đầu Trích Xuất"** và theo dõi tiến độ chạy, lượng token tiêu hao & tiền VNĐ nhảy trực tiếp trên màn hình.

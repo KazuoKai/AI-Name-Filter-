@@ -47,9 +47,23 @@ document.addEventListener("DOMContentLoaded", () => {
   
   // Load các khóa đã lưu từ localStorage
   loadSettings();
-  
-  // Tải danh sách model ban đầu
+
+  // Luôn mặc định DeepSeek V4 Flash qua trung gian
+  const providerSelect = document.getElementById("provider-select");
+  const modelSelect = document.getElementById("model-select");
+  if (providerSelect) providerSelect.value = "deepseek";
   handleProviderChange();
+  if (modelSelect) {
+    const v4Flash = Array.from(modelSelect.options).find(o => o.value === "deepseek-v4-flash");
+    if (v4Flash) modelSelect.value = "deepseek-v4-flash";
+  }
+  loadProxyConfig().then(cfg => {
+    const keyInput = document.getElementById("deepseek-key");
+    if (keyInput && cfg.apiKey && !keyInput.value) {
+      keyInput.value = cfg.apiKey;
+      saveSettings();
+    }
+  }).catch(() => {});
   
   // Thêm sự kiện đếm ký tự input
   const textInput = document.getElementById("raw-chinese-text");
@@ -57,7 +71,7 @@ document.addEventListener("DOMContentLoaded", () => {
     document.getElementById("input-char-count").innerText = `${textInput.value.length} ký tự`;
   });
   
-  // Lưu tự động quy tắc tùy chỉnh khi gõ và đồng bộ vào D:\Proxy\data\ignore_rules.txt
+  // Lưu tự động quy tắc tùy chỉnh khi gõ và đồng bộ vào D:\Proxy2\data\ignore_rules.txt
   const customRulesInput = document.getElementById("custom-rules");
   let saveIgnoreTimeout = null;
   customRulesInput.addEventListener("input", () => {
@@ -116,8 +130,8 @@ function handleProviderChange() {
     opt.value = model.id;
     opt.innerText = model.label;
     
-    // Đặt mặc định khuyên dùng
-    if (provider === "gemini" && model.id === "gemini-1.5-flash") opt.selected = true;
+    // Đặt mặc định khuyên dùng: DeepSeek V4 Flash qua trung gian
+
     if (provider === "deepseek" && model.id === "deepseek-v4-flash") opt.selected = true;
     
     modelSelect.appendChild(opt);
@@ -265,12 +279,10 @@ async function startExtraction() {
   }
   
   const provider = document.getElementById("provider-select").value;
-  const apiKey = provider === "gemini" 
-    ? document.getElementById("gemini-key").value.trim() 
-    : document.getElementById("deepseek-key").value.trim();
+  const apiKey = document.getElementById("deepseek-key").value.trim() || document.getElementById("gemini-key").value.trim();
     
   if (!apiKey) {
-    alert(`Vui lòng nhập API Key cho ${provider === "gemini" ? "Google Gemini" : "DeepSeek"}!`);
+    alert("Vui lòng nhập API Key trung gian!");
     return;
   }
   
