@@ -77,20 +77,13 @@ document.addEventListener("DOMContentLoaded", () => {
   // Khởi tạo Lucide icons
   lucide.createIcons();
   
-  // Load các khóa đã lưu từ localStorage
+  // Load các khóa đã lưu từ localStorage (gọi trước mọi thứ khác)
   loadSettings();
+  // Lỗi 2 đã sửa: bỏ phần hardcode provider và model ở dưới — để loadSettings() quyết định
 
-  // Luôn mặc định DeepSeek V4 Flash qua trung gian
-  const providerSelect = document.getElementById("provider-select");
-  const modelSelect = document.getElementById("model-select");
-  if (providerSelect) providerSelect.value = "deepseek";
-  handleProviderChange();
-  if (modelSelect) {
-    const v4Flash = Array.from(modelSelect.options).find(o => o.value === "deepseek-v4-flash");
-    if (v4Flash) modelSelect.value = "deepseek-v4-flash";
-  }
   loadProxyConfig().then(cfg => {
     const keyInput = document.getElementById("deepseek-key");
+    // Chỉ điền key từ server nếu user chưa tự nhập
     if (keyInput && cfg.apiKey && !keyInput.value) {
       keyInput.value = cfg.apiKey;
       saveSettings();
@@ -256,25 +249,41 @@ function setActiveToggle(groupId, value) {
 function saveSettings() {
   localStorage.setItem("gemini_api_key", document.getElementById("gemini-key").value);
   localStorage.setItem("deepseek_api_key", document.getElementById("deepseek-key").value);
-  if (document.getElementById("proxy-key")) {
-    localStorage.setItem("proxy_api_key", document.getElementById("proxy-key").value);
-  }
+  const proxyKeyEl = document.getElementById("proxy-key");
+  localStorage.setItem("proxy_api_key", proxyKeyEl ? proxyKeyEl.value : '');
   localStorage.setItem("custom_rules", document.getElementById("custom-rules").value);
+  // Lưu provider và model để khôi phục sau F5
+  const ps = document.getElementById("provider-select");
+  const ms = document.getElementById("model-select");
+  if (ps) localStorage.setItem("selected_provider", ps.value);
+  if (ms) localStorage.setItem("selected_model", ms.value);
 }
 
 function loadSettings() {
-  if (localStorage.getItem("gemini_api_key")) {
+  if (localStorage.getItem("gemini_api_key"))
     document.getElementById("gemini-key").value = localStorage.getItem("gemini_api_key");
-  }
-  if (localStorage.getItem("deepseek_api_key")) {
+  if (localStorage.getItem("deepseek_api_key"))
     document.getElementById("deepseek-key").value = localStorage.getItem("deepseek_api_key");
-  }
-  if (localStorage.getItem("proxy_api_key") && document.getElementById("proxy-key")) {
+  if (localStorage.getItem("proxy_api_key") && document.getElementById("proxy-key"))
     document.getElementById("proxy-key").value = localStorage.getItem("proxy_api_key");
-  }
-  if (localStorage.getItem("custom_rules")) {
+  if (localStorage.getItem("custom_rules"))
     document.getElementById("custom-rules").value = localStorage.getItem("custom_rules");
+
+  // Khôi phục provider và model đã chọn trước đó
+  const savedProvider = localStorage.getItem("selected_provider");
+  const savedModel    = localStorage.getItem("selected_model");
+  const ps = document.getElementById("provider-select");
+  const ms = document.getElementById("model-select");
+  if (savedProvider && ps) {
+    ps.value = savedProvider;
+    handleProviderChange(); // cập nhật dropdown model và hiển thị ô key đúng
+    if (savedModel && ms) {
+      // Đợi handleProviderChange() build xong option rồi mới set model
+      const opt = Array.from(ms.options).find(o => o.value === savedModel);
+      if (opt) ms.value = savedModel;
+    }
   }
+
   fetch('/api/get-ignore')
     .then(r => r.json())
     .then(data => {
@@ -1071,7 +1080,9 @@ function handleDictUpload(event) {
           // Làm sạch bản dịch: chuyển Li -> Ly, viết thường bối phận
           const viClean = cleanTranslation(vi);
           
-          // Loại bỏ từ cấm – fast path O(1)
+          // Lỗi 1 đã sửa: khai báo biến trước khi gọi isIgnoredItem
+          const cnLower = cn.toLowerCase();
+          const viLower = viClean.toLowerCase();
           if (isIgnoredItem(cnLower, viLower)) return;
           
           referenceDictMap.set(cn, viClean);
