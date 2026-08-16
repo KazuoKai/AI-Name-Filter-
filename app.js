@@ -95,8 +95,19 @@ document.addEventListener("DOMContentLoaded", () => {
   textInput.addEventListener("input", () => {
     document.getElementById("input-char-count").innerText = `${textInput.value.length} ký tự`;
   });
-  
-  // Lưu tự động quy tắc tùy chỉnh khi gõ và đồng bộ vào D:\Proxy2\data\ignore_rules.txt
+
+  // Auto-save key vào localStorage ngay khi gõ (không cần bấm nút)
+  ['gemini-key', 'deepseek-key', 'proxy-key'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener('input', saveSettings);
+  });
+  // Auto-save khi đổi provider hoặc model
+  const ps2 = document.getElementById('provider-select');
+  const ms2 = document.getElementById('model-select');
+  if (ps2) ps2.addEventListener('change', saveSettings);
+  if (ms2) ms2.addEventListener('change', saveSettings);
+
+  // Lưu tự động quy tắc tùy chỉnh khi gõ và đồng bộ vào ignore_rules.txt
   const customRulesInput = document.getElementById("custom-rules");
   let saveIgnoreTimeout = null;
   customRulesInput.addEventListener("input", () => {
@@ -145,25 +156,22 @@ function togglePasswordVisibility(inputId) {
   lucide.createIcons();
 }
 
-// Thay đổi provider (Gemini / Deepseek)
+// Thay đổi provider (Gemini / Deepseek / Proxy)
 function handleProviderChange() {
   const provider = document.getElementById("provider-select").value;
   const modelSelect = document.getElementById("model-select");
   modelSelect.innerHTML = "";
-  
-  const models = modelsMap[provider];
+
+  const models = modelsMap[provider] || [];
   models.forEach(model => {
     const opt = document.createElement("option");
     opt.value = model.id;
     opt.innerText = model.label;
-    
-    // Đặt mặc định khuyên dùng theo từng provider
-    if (provider === "gemini" && model.id === "gemini-3.6-flash") opt.selected = true;
-    if (provider === "deepseek" && model.id === "deepseek-chat") opt.selected = true;
-    if (provider === "proxy" && model.id === "deepseek-v4-flash") opt.selected = true;
-    
     modelSelect.appendChild(opt);
   });
+  // Model mặc định theo provider
+  const defaults = { gemini: "gemini-3.6-flash", deepseek: "deepseek-chat", proxy: "deepseek-v4-flash" };
+  if (defaults[provider]) modelSelect.value = defaults[provider];
 }
 
 // Reset các cài đặt về mặc định
@@ -276,12 +284,15 @@ function loadSettings() {
   const ms = document.getElementById("model-select");
   if (savedProvider && ps) {
     ps.value = savedProvider;
-    handleProviderChange(); // cập nhật dropdown model và hiển thị ô key đúng
+    handleProviderChange(); // build lại model dropdown theo provider
+    // Set model SAU khi handleProviderChange đã tạo options
     if (savedModel && ms) {
-      // Đợi handleProviderChange() build xong option rồi mới set model
-      const opt = Array.from(ms.options).find(o => o.value === savedModel);
-      if (opt) ms.value = savedModel;
+      ms.value = savedModel; // trình duyệt tự show option khớp value
     }
+  } else {
+    // Lần đầu dùng: mặc định proxy
+    if (ps) ps.value = 'proxy';
+    handleProviderChange();
   }
 
   fetch('/api/get-ignore')
