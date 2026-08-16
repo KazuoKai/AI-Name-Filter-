@@ -3,29 +3,29 @@
 // Cấu hình Model cho 3 Nền tảng (Google Gemini Chính Thức, DeepSeek Chính Thức, Proxy Trung Gian)
 const modelsMap = {
   gemini: [
-    { id: "gemini-3.6-flash", label: "gemini-3.6-flash (Mới nhất 2026)" },
-    { id: "gemini-3.5-flash", label: "gemini-3.5-flash (Nhanh & Tốt nhất)" },
+    { id: "gemini-3.6-flash",      label: "gemini-3.6-flash (Mới nhất 2026)" },
+    { id: "gemini-3.5-flash",      label: "gemini-3.5-flash (Nhanh & Tốt nhất)" },
     { id: "gemini-3.5-flash-lite", label: "gemini-3.5-flash-lite (Siêu tiết kiệm)" },
-    { id: "gemini-3.5-pro", label: "gemini-3.5-pro (Thông minh nhất)" },
-    { id: "gemini-3.1-flash", label: "gemini-3.1-flash" },
+    { id: "gemini-3.5-pro",        label: "gemini-3.5-pro (Thông minh nhất)" },
+    { id: "gemini-3.1-flash",      label: "gemini-3.1-flash" },
     { id: "gemini-3.1-flash-lite", label: "gemini-3.1-flash-lite" },
-    { id: "gemini-3.1-pro", label: "gemini-3.1-pro" },
-    { id: "gemini-3.0-flash", label: "gemini-3.0-flash" },
-    { id: "gemini-2.5-flash", label: "gemini-2.5-flash" },
-    { id: "gemini-1.5-flash", label: "gemini-1.5-flash" }
+    { id: "gemini-3.1-pro",        label: "gemini-3.1-pro" },
+    { id: "gemini-3.0-flash",      label: "gemini-3.0-flash" },
+    { id: "gemini-2.5-flash",      label: "gemini-2.5-flash" },
+    { id: "gemini-1.5-flash",      label: "gemini-1.5-flash" }
   ],
   deepseek: [
-    { id: "deepseek-v4-flash", label: "deepseek-v4-flash (DeepSeek V4 Siêu tiết kiệm)" },
-    { id: "deepseek-v4-pro", label: "deepseek-v4-pro (DeepSeek V4 Chất lượng cao)" },
-    { id: "deepseek-chat", label: "deepseek-chat (DeepSeek V3 Chính thức)" },
-    { id: "deepseek-reasoner", label: "deepseek-reasoner (DeepSeek R1 Suy luận)" }
+    // api.deepseek.com - deepseek-chat và deepseek-reasoner đã bị xóa ngày 24/7/2026
+    { id: "deepseek-v4-flash", label: "deepseek-v4-flash (V4 Flash — Chính thức)" },
+    { id: "deepseek-v4-pro",   label: "deepseek-v4-pro (V4 Pro — Mạnh nhất)" }
   ],
   proxy: [
-    { id: "deepseek-v4-flash", label: "deepseek-v4-flash (V4 Siêu tiết kiệm Proxy)" },
-    { id: "deepseek-v4-pro", label: "deepseek-v4-pro (V4 Chất lượng cao Proxy)" },
+    { id: "deepseek-v4-flash", label: "deepseek-v4-flash (V4 Siêu tiết kiệm)" },
+    { id: "deepseek-v4-pro",   label: "deepseek-v4-pro (V4 Chất lượng cao)" },
     { id: "deepseek-reasoner", label: "deepseek-reasoner (R1 Proxy)" }
   ]
 };
+
 
 // Bảng giá token thực tế (USD trên 1 Triệu tokens)
 const modelPricing = {

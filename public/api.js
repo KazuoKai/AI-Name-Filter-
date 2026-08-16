@@ -259,27 +259,22 @@ async function extractChunk({ provider, apiKey, modelId, text, mode, type, forei
 
   } else if (provider === "deepseek") {
     // 2. DeepSeek API Chính Thức (https://api.deepseek.com)
+    // deepseek-chat và deepseek-reasoner đã bị xóa ngày 24/7/2026
+    // Chỉ còn: deepseek-v4-flash, deepseek-v4-pro
     const url = "https://api.deepseek.com/chat/completions";
     const requestBody = {
-      model: modelId || "deepseek-chat",
+      model: modelId || "deepseek-v4-flash",
       messages: [
         { role: "system", content: systemPrompt },
         { role: "user", content: `Chunk ${chunkIndex + 1}/${totalChunks}:\n${text}` }
       ],
       temperature: 0,
       max_tokens: 8192,
+      response_format: { type: "json_object" },
+      thinking: { type: "disabled" }, // tắt thinking mode mặc định để lấy JSON nhanh
       stream: false
     };
-    
-    if (modelId === "deepseek-reasoner") {
-      delete requestBody.response_format;
-    } else {
-      requestBody.response_format = { type: "json_object" };
-      if (modelId && modelId.includes("v4")) {
-        requestBody.thinking = { type: "disabled" };
-      }
-    }
-    
+
     const response = await fetchWithTimeout(url, {
       method: "POST",
       headers: {
@@ -288,17 +283,16 @@ async function extractChunk({ provider, apiKey, modelId, text, mode, type, forei
       },
       body: JSON.stringify(requestBody)
     }, timeoutMs);
-    
+
     if (!response.ok) {
       const errText = await response.text();
       throw new Error(`DeepSeek API Error ${response.status}: ${errText}`);
     }
-    
+
     const data = await response.json();
     let names = [];
     if (data.choices && data.choices[0] && data.choices[0].message) {
-      const msg = data.choices[0].message;
-      const contentText = msg.content || msg.reasoning_content || "";
+      const contentText = data.choices[0].message.content || "";
       const parsed = parseJSONResponse(contentText);
       names = (parsed && Array.isArray(parsed.names)) ? parsed.names : [];
     }
@@ -306,8 +300,9 @@ async function extractChunk({ provider, apiKey, modelId, text, mode, type, forei
       promptTokens: data.usage.prompt_tokens || 0,
       completionTokens: data.usage.completion_tokens || 0
     } : { promptTokens: 0, completionTokens: 0 };
-    
+
     return { names, usage };
+
 
   } else {
     // 3. Proxy Trung Gian (NexusMMO / DeepSeek V4 Proxy)
