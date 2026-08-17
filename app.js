@@ -1,4 +1,4 @@
-﻿// app.js - Điều khiển giao diện (UI) và điều phối tiến trình trích xuất
+// app.js - Điều khiển giao diện (UI) và điều phối tiến trình trích xuất
 
 // Cấu hình Model cho 3 Nền tảng (Google Gemini Chính Thức, DeepSeek Chính Thức, Proxy Trung Gian)
 const modelsMap = {
@@ -1033,16 +1033,15 @@ function downloadColumnFile(colType) {
     // Tạo bản gộp giữa từ điển tích lũy cũ và các từ mới trích xuất
     const mergedMap = new Map();
     
-    // 1. Nạp từ điển cũ vào, tự động lọc từ cấm, chuyển Li->Ly và viết thường bối phận
+    // 1. Nạp từ điển cũ vào (vi đã làm sạch lúc upload, O(1) fast path)
     for (const [cn, vi] of referenceDictMap.entries()) {
       const cnLower = cn.toLowerCase();
-      const viClean = cleanTranslation(vi);
-      const viLower = viClean.toLowerCase();
+      const viLower = vi.toLowerCase();
       
       // Lọc bỏ từ cấm – fast path O(1)
       if (isIgnoredItem(cnLower, viLower)) continue;
       
-      mergedMap.set(cn, viClean);
+      mergedMap.set(cn, vi);
     }
     
     // 2. Nạp từ mới đã duyệt vào sau
@@ -1103,12 +1102,15 @@ function handleFileUpload(event) {
   reader.readAsText(file, "utf-8");
 }
 
-// Xử lý nạp file từ điển tích lũy gốc Names.txt
+// Xử lý nạp file từ điển tích lũy gốc Names.txt (bất đồng bộ theo batch không đơ UI)
 function handleDictUpload(event) {
   const file = event.target.files[0];
   if (!file) return;
   
   uploadedFileName = file.name;
+  const statusEl = document.getElementById("dict-upload-status");
+  if (statusEl) statusEl.innerText = "⏳ Đang nạp từ điển tích lũy...";
+
   const reader = new FileReader();
   reader.onload = function(e) {
     const text = e.target.result;
@@ -1118,30 +1120,43 @@ function handleDictUpload(event) {
     parseCustomRules();
     
     const lines = text.split(/\r?\n/);
+    const totalLines = lines.length;
     let count = 0;
-    lines.forEach(line => {
-      const trimmed = line.trim();
-      if (!trimmed || trimmed.startsWith("#")) return;
-      const idx = trimmed.indexOf("=");
-      if (idx > 0) {
-        const cn = trimmed.slice(0, idx).trim();
-        const vi = trimmed.slice(idx + 1).trim();
-        if (cn && vi) {
-          // Làm sạch bản dịch: chuyển Li -> Ly, viết thường bối phận
-          const viClean = cleanTranslation(vi);
-          
-          // Lỗi 1 đã sửa: khai báo biến trước khi gọi isIgnoredItem
-          const cnLower = cn.toLowerCase();
-          const viLower = viClean.toLowerCase();
-          if (isIgnoredItem(cnLower, viLower)) return;
-          
-          referenceDictMap.set(cn, viClean);
-          count++;
+    let index = 0;
+    const BATCH_SIZE = 50000;
+
+    function processBatch() {
+      const end = Math.min(index + BATCH_SIZE, totalLines);
+      for (let i = index; i < end; i++) {
+        const line = lines[i];
+        const trimmed = line.trim();
+        if (!trimmed || trimmed.startsWith("#")) continue;
+        const idx = trimmed.indexOf("=");
+        if (idx > 0) {
+          const cn = trimmed.slice(0, idx).trim();
+          const vi = trimmed.slice(idx + 1).trim();
+          if (cn && vi) {
+            const viClean = cleanTranslation(vi);
+            const cnLower = cn.toLowerCase();
+            const viLower = viClean.toLowerCase();
+            if (isIgnoredItem(cnLower, viLower)) continue;
+            referenceDictMap.set(cn, viClean);
+            count++;
+          }
         }
       }
-    });
-    
-    document.getElementById("dict-upload-status").innerText = `Đã nạp ${count.toLocaleString()} từ tích lũy (đã tự động làm sạch).`;
+
+      index = end;
+      if (index < totalLines) {
+        const pct = Math.floor((index / totalLines) * 100);
+        if (statusEl) statusEl.innerText = `⏳ Đang nạp... ${pct}% (${count.toLocaleString()}/${totalLines.toLocaleString()} từ)`;
+        setTimeout(processBatch, 0);
+      } else {
+        if (statusEl) statusEl.innerText = `✅ Đã nạp ${count.toLocaleString()} từ tích lũy (đã tự động làm sạch).`;
+      }
+    }
+
+    processBatch();
     event.target.value = "";
   };
   reader.onerror = function() {

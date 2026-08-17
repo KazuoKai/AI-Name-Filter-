@@ -434,44 +434,37 @@ function initViDictWords() {
   extra.forEach(w => viDictWords.add(w));
 }
 
+const PRE_SORTED_HONORIFICS = [
+  "phó chủ tịch tỉnh", "chủ tịch tỉnh", "phó tỉnh trưởng", "tỉnh trưởng",
+  "phó chủ tịch", "chủ tịch", "phó thị trưởng", "thị trưởng",
+  "phó giám đốc", "giám đốc", "tổng giám đốc", "phó tổng giám đốc",
+  "phó chủ nhiệm", "chủ nhiệm", "phó trưởng phòng", "trưởng phòng",
+  "phó phòng", "trưởng khoa", "phó khoa", "trưởng ban", "phó ban",
+  "phó hiệu trưởng", "hiệu trưởng", "phó viện trưởng", "viện trưởng",
+  "phó cục trưởng", "cục trưởng", "phó sở trưởng", "sở trưởng",
+  "phó xưởng trưởng", "xưởng trưởng", "phó đội trưởng", "đội trưởng",
+  "phó bí thư", "bí thư", "thủ trưởng", "chủ tịch hội đồng",
+  "đại hội trưởng", "đại sư huynh", "đại sư tỷ",
+  "trưởng lão", "sư huynh", "sư tỷ", "sư muội", "sư đệ",
+  "tiền bối", "đạo hữu", "công tử", "phu nhân", "tiểu thư",
+  "đại nhân", "lão tổ", "chưởng môn", "thành chủ", "môn chủ",
+  "bang chủ", "gia chủ", "tướng quân", "đệ tử", "võ giả",
+  "đạo sĩ", "y sư", "pháp sư", "phong chủ", "tông chủ",
+  "động chủ", "cốc chủ", "các chủ", "lão sư", "sư phụ",
+  "a di", "tẩu", "bà bà", "cô cô", "hội trưởng", "đội trưởng",
+  "tộc trưởng", "lâu chủ", "trang chủ", "phủ chủ", "minh chủ",
+  "điện chủ", "viện chủ", "đường chủ", "quán chủ", "tự chủ",
+  "lãnh chúa", "thị", "thành", "tỉnh", "huyện", "xã", "thôn",
+  "trấn", "tỷ", "muội", "huynh", "đệ", "chủ", "phó", "trưởng",
+  "sư", "lão", "bà", "cô", "dì", "chú", "bác"
+].sort((a, b) => b.length - a.length);
+
 // Hàm chuẩn hóa viết thường hậu tố bối phận/danh hiệu/chức vụ (ví dụ: Lâm trưởng lão, Mã chủ nhiệm, Trương trưởng phòng)
 function formatHonorifics(text) {
   if (!text) return "";
-  const honorifics = [
-    // Chức vụ hiện đại / hành chính
-    "phó chủ tịch tỉnh", "chủ tịch tỉnh", "phó tỉnh trưởng", "tỉnh trưởng",
-    "phó chủ tịch", "chủ tịch", "phó thị trưởng", "thị trưởng",
-    "phó giám đốc", "giám đốc", "tổng giám đốc", "phó tổng giám đốc",
-    "phó chủ nhiệm", "chủ nhiệm", "phó trưởng phòng", "trưởng phòng",
-    "phó phòng", "trưởng khoa", "phó khoa", "trưởng ban", "phó ban",
-    "phó hiệu trưởng", "hiệu trưởng", "phó viện trưởng", "viện trưởng",
-    "phó cục trưởng", "cục trưởng", "phó sở trưởng", "sở trưởng",
-    "phó xưởng trưởng", "xưởng trưởng", "phó đội trưởng", "đội trưởng",
-    "phó bí thư", "bí thư", "thủ trưởng", "chủ tịch hội đồng",
-
-    // Hậu tố hành chính địa danh
-    "thị", "thành", "tỉnh", "huyện", "xã", "thôn", "trấn",
-
-    // Tiên hiệp / Tu chân / Bối phận
-    "trưởng lão", "sư huynh", "sư tỷ", "sư muội", "sư đệ", 
-    "đại sư huynh", "đại sư tỷ", "tiền bối", "đạo hữu", 
-    "tỷ", "muội", "huynh", "đệ", "công tử", "phu nhân", "tiểu thư", 
-    "đại nhân", "lão tổ", "chưởng môn", "thành chủ", "môn chủ", 
-    "bang chủ", "gia chủ", "tướng quân", "đệ tử", "võ giả", 
-    "đạo sĩ", "y sư", "pháp sư",
-    
-    "phong chủ", "tông chủ", "động chủ", "cốc chủ", "các chủ", 
-    "đại hội trưởng", "lão sư", "sư phụ", "a di", "tẩu", 
-    "bà bà", "cô cô", "hội trưởng", "đội trưởng", "tộc trưởng", 
-    "lâu chủ", "trang chủ", "phủ chủ", "minh chủ", "điện chủ", 
-    "viện chủ", "đường chủ", "quán chủ", "tự chủ", "lãnh chúa", 
-    "chủ", "phó", "trưởng", "sư", "lão", "bà", "cô", "dì", "chú", "bác"
-  ];
-  
-  honorifics.sort((a, b) => b.length - a.length);
-  
   const textLower = text.toLowerCase();
-  for (const h of honorifics) {
+  for (let i = 0; i < PRE_SORTED_HONORIFICS.length; i++) {
+    const h = PRE_SORTED_HONORIFICS[i];
     const suffix = " " + h;
     if (textLower.endsWith(suffix) && textLower.length > suffix.length) {
       const index = text.length - h.length;
@@ -543,14 +536,19 @@ const standaloneLiRegex = new RegExp('(?<=^|[^' + VI_LETTERS + '])([Ll]i)(?=$|[^
 
 // Hàm thay thế an toàn: chỉ đổi từ "Li" / "li" khi đứng độc lập hoàn toàn, không đụng vào "Liệt", "Liêm", "Linh", "Liễu"...
 function safeReplaceLi(text) {
-  if (!text) return "";
+  if (!text || (!text.includes("Li") && !text.includes("li"))) return text || "";
   return text.replace(standaloneLiRegex, match => match === "Li" ? "Ly" : "ly");
 }
 
-// Hàm dọn dẹp bản dịch: Chuyển "Li" độc lập thành "Ly" và viết thường hậu tố bối phận/danh hiệu
+// Hàm dọn dẹp bản dịch: Chuyển "Li" độc lập thành "Ly" và viết thường hậu tố bối phận/danh hiệu (Fast path O(1))
 function cleanTranslation(vi) {
   if (!vi) return "";
-  let cleaned = safeReplaceLi(vi);
-  cleaned = formatHonorifics(cleaned);
+  let cleaned = vi;
+  if (vi.includes("Li") || vi.includes("li")) {
+    cleaned = safeReplaceLi(vi);
+  }
+  if (cleaned.includes(" ") || cleaned.includes("-")) {
+    cleaned = formatHonorifics(cleaned);
+  }
   return cleaned;
 }
