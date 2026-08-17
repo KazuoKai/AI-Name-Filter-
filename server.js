@@ -1,4 +1,4 @@
-﻿const express = require('express');
+const express = require('express');
 const cors = require('cors');
 const fs = require('fs');
 const path = require('path');
@@ -393,7 +393,10 @@ app.post('/api/extract-names', requireAdminKey, rateLimit, async (req, res) => {
             '- Scan the chunk twice internally before answering: first for obvious names, second for rare/one-off names.',
             '- Extract all named entities, including names that appear only once.',
             '- Do not limit the list to main characters or frequent names.',
-            '- Include aliases, courtesy names, titles used as names, place names, sect/faction names, artifact names, skill names, creature names, and unique realm/world names.',
+            '- Include aliases, courtesy names, titles used as names, place names, sect/faction names (e.g. 羽化门, 青云门, 太清门, 蜀山派, 天道宗, 唐家), artifact names, skill names (e.g. 六脉神指, 寂灭指, 乾坤指, 一阳指, 降龙十八掌), creature names, and unique realm/world names.',
+            '- CRITICAL: Always extract 2-character Chinese person names (e.g. 王贵, 萧炎, 叶凡, 张三, 李四). Never skip 2-character names.',
+            '- CRITICAL: Always extract Sect/Faction names (Category: Faction), especially those ending with 门 (e.g. 羽化门), 派, 宗, 谷, 宫, 阁, 堂, 院.',
+            '- CRITICAL: Always extract Skill/Technique names (Category: Skill), especially finger skills ending with 指 (e.g. 六脉神指, 寂灭指, 乾坤指, 一阳指).',
             '- Skip common words and generic phrases only when they are clearly not used as a name/title/entity.',
             '- For ambiguous 2-4 Chinese character phrases, include them if context treats them like a person, place, faction, item, skill, title, or creature.',
             '- Set "reading" to "hanviet" for every extracted entity.',
