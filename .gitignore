@@ -1,14 +1,10 @@
-# Thư mục thư viện cài đặt (Nặng, tự sinh bằng npm install)
 node_modules/
-
-# Thư mục chứa file .exe đóng gói (Được tải lên GitHub Releases)
+data/
+*.log
+.env
+.env.local
+server.js.bak
 dist/
-
-# File tạm của hệ điều hành
+public/server.js
 .DS_Store
 Thumbs.db
-Desktop.ini
-
-# File log lỗi npm
-npm-debug.log*
-*.log

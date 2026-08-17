@@ -1,4 +1,4 @@
-// app.js - Điều khiển giao diện (UI) và điều phối tiến trình trích xuất
+﻿// app.js - Điều khiển giao diện (UI) và điều phối tiến trình trích xuất
 
 // Cấu hình Model cho 3 Nền tảng (Google Gemini Chính Thức, DeepSeek Chính Thức, Proxy Trung Gian)
 const modelsMap = {
@@ -115,9 +115,12 @@ document.addEventListener("DOMContentLoaded", () => {
     parseCustomRules();
     clearTimeout(saveIgnoreTimeout);
     saveIgnoreTimeout = setTimeout(() => {
+      const adminKeyEl = document.getElementById("admin-key");
+      const adminKey = adminKeyEl ? adminKeyEl.value.trim() : '';
+      if (!adminKey) return;
       fetch('/api/save-ignore', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'x-admin-key': adminKey },
         body: JSON.stringify({ text: customRulesInput.value })
       }).catch(() => {});
     }, 500);
@@ -170,7 +173,7 @@ function handleProviderChange() {
     modelSelect.appendChild(opt);
   });
   // Model mặc định theo provider
-  const defaults = { gemini: "gemini-3.6-flash", deepseek: "deepseek-chat", proxy: "deepseek-v4-flash" };
+  const defaults = { gemini: "gemini-3.6-flash", deepseek: "deepseek-v4-flash", proxy: "deepseek-v4-flash" };
   if (defaults[provider]) modelSelect.value = defaults[provider];
 }
 
@@ -259,6 +262,8 @@ function saveSettings() {
   localStorage.setItem("deepseek_api_key", document.getElementById("deepseek-key").value);
   const proxyKeyEl = document.getElementById("proxy-key");
   localStorage.setItem("proxy_api_key", proxyKeyEl ? proxyKeyEl.value : '');
+  const adminKeyEl = document.getElementById("admin-key");
+  if (adminKeyEl) localStorage.setItem("admin_key", adminKeyEl.value);
   localStorage.setItem("custom_rules", document.getElementById("custom-rules").value);
   // Lưu provider và model để khôi phục sau F5
   const ps = document.getElementById("provider-select");
@@ -274,6 +279,8 @@ function loadSettings() {
     document.getElementById("deepseek-key").value = localStorage.getItem("deepseek_api_key");
   if (localStorage.getItem("proxy_api_key") && document.getElementById("proxy-key"))
     document.getElementById("proxy-key").value = localStorage.getItem("proxy_api_key");
+  if (localStorage.getItem("admin_key") && document.getElementById("admin-key"))
+    document.getElementById("admin-key").value = localStorage.getItem("admin_key");
   if (localStorage.getItem("custom_rules"))
     document.getElementById("custom-rules").value = localStorage.getItem("custom_rules");
 
@@ -286,8 +293,9 @@ function loadSettings() {
     ps.value = savedProvider;
     handleProviderChange(); // build lại model dropdown theo provider
     // Set model SAU khi handleProviderChange đã tạo options
-    if (savedModel && ms) {
-      ms.value = savedModel; // trình duyệt tự show option khớp value
+    if (ms) {
+      const modelExists = Array.from(ms.options).some(o => o.value === savedModel);
+      ms.value = modelExists ? savedModel : (modelsMap[ps.value]?.[0]?.value || '');
     }
   } else {
     // Lần đầu dùng: mặc định proxy
@@ -721,7 +729,7 @@ function processAndFilterNames(namesArray, type, foreignReadingCategories) {
     }
     
     // Chạy Bộ lọc thông minh bẫy rác Hán Việt (Lớp 2.2)
-    isClean = isProperName(cn, vi, type);
+    const isClean = isProperName(cn, vi, type);
     
     if (isClean) {
       mergeIntoList(cleanNamesList, { chinese: cn, hanviet: vi, category: cat, count });
@@ -831,28 +839,59 @@ function buildRow(item, colType) {
   tr.setAttribute('data-chinese', item.chinese);
   tr.setAttribute('data-hanviet', item.hanviet);
 
-  const sCn   = escapeHtml(item.chinese);
-  const sHv   = escapeHtml(item.hanviet);
-  const sCat  = escapeHtml(getCategoryLabel(item.category));
-  const sCls  = escapeHtml('cat-badge cat-' + (item.category || '').toLowerCase());
-  const sCnt  = escapeHtml(String(item.count));
-  const sRawCat = escapeHtml(item.category);
+  const tdCn = document.createElement('td');
+  tdCn.className = 'chinese-cell';
+  tdCn.title = item.chinese;
+  tdCn.textContent = item.chinese;
 
-  const moveBtn = colType === 'clean'
-    ? `<button class="btn-icon btn-move" title="Đẩy sang Từ Thường" onclick="moveItem('${sCn}','clean','trash')"><i data-lucide="chevron-right"></i></button>`
-    : `<button class="btn-icon btn-move" title="Khôi phục thành Tên Riêng" onclick="moveItem('${sCn}','trash','clean')"><i data-lucide="chevron-left"></i></button>`;
+  const tdHv = document.createElement('td');
+  tdHv.className = 'hanviet-cell';
+  tdHv.textContent = item.hanviet;
 
-  tr.innerHTML = `
-    <td class="chinese-cell" title="${sCn}">${sCn}</td>
-    <td class="hanviet-cell">${sHv}</td>
-    <td><span class="${sCls}">${sCat}</span></td>
-    <td style="text-align:center;color:var(--text-muted);font-size:0.85rem">${sCnt}</td>
-    <td><div class="row-actions">
-      ${moveBtn}
-      <button class="btn-icon btn-edit" title="Sửa" onclick="openEditModal('${sCn}','${sHv}','${sRawCat}','${colType}')"><i data-lucide="edit"></i></button>
-      <button class="btn-icon btn-delete" title="Xóa" onclick="deleteItem('${sCn}','${colType}')"><i data-lucide="trash-2"></i></button>
-    </div></td>
-  `;
+  const catSpan = document.createElement('span');
+  catSpan.className = 'cat-badge cat-' + String(item.category || '').toLowerCase();
+  catSpan.textContent = getCategoryLabel(item.category);
+
+  const tdCat = document.createElement('td');
+  tdCat.appendChild(catSpan);
+
+  const tdCount = document.createElement('td');
+  tdCount.style.cssText = 'text-align:center;color:var(--text-muted);font-size:0.85rem';
+  tdCount.textContent = String(item.count);
+
+  const div = document.createElement('div');
+  div.className = 'row-actions';
+
+  const moveBtn = document.createElement('button');
+  moveBtn.className = 'btn-icon btn-move';
+  moveBtn.title = colType === 'clean' ? 'Đẩy sang Từ Thường' : 'Khôi phục thành Tên Riêng';
+  moveBtn.innerHTML = '<i data-lucide="' + (colType === 'clean' ? 'chevron-right' : 'chevron-left') + '"></i>';
+  moveBtn.addEventListener('click', () => moveItem(item.chinese, colType, colType === 'clean' ? 'trash' : 'clean'));
+
+  const editBtn = document.createElement('button');
+  editBtn.className = 'btn-icon btn-edit';
+  editBtn.title = 'Sửa';
+  editBtn.innerHTML = '<i data-lucide="edit"></i>';
+  editBtn.addEventListener('click', () => openEditModal(item.chinese, item.hanviet, item.category, colType));
+
+  const deleteBtn = document.createElement('button');
+  deleteBtn.className = 'btn-icon btn-delete';
+  deleteBtn.title = 'Xóa';
+  deleteBtn.innerHTML = '<i data-lucide="trash-2"></i>';
+  deleteBtn.addEventListener('click', () => deleteItem(item.chinese, colType));
+
+  div.appendChild(moveBtn);
+  div.appendChild(editBtn);
+  div.appendChild(deleteBtn);
+
+  const tdActions = document.createElement('td');
+  tdActions.appendChild(div);
+
+  tr.appendChild(tdCn);
+  tr.appendChild(tdHv);
+  tr.appendChild(tdCat);
+  tr.appendChild(tdCount);
+  tr.appendChild(tdActions);
   return tr;
 }
 

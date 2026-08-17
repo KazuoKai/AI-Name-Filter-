@@ -1,4 +1,4 @@
-// api.js - Quản lý cuộc gọi API, chia nhỏ văn bản và xếp hàng đợi song song
+﻿// api.js - Quản lý cuộc gọi API, chia nhỏ văn bản và xếp hàng đợi song song
 
 // Hàm chia văn bản thành các chunk có độ dài và độ lặp lại chỉ định
 function splitTextIntoChunks(text, chunkSize, overlap) {
@@ -193,7 +193,11 @@ function loadProxyConfig() {
   if (!proxyConfigPromise) {
     proxyConfigPromise = (async () => {
       try {
-        const res = await fetch('/api/ai-config');
+        const headers = {};
+        if (typeof window !== 'undefined' && window.localStorage && localStorage.getItem('admin_key')) {
+          headers['x-admin-key'] = localStorage.getItem('admin_key');
+        }
+        const res = await fetch('/api/ai-config', { headers });
         const data = await res.json();
         if (data && data.success) {
           if (data.baseUrl) proxyBaseUrl = String(data.baseUrl).replace(/\/+$/, '');
@@ -309,6 +313,7 @@ async function extractChunk({ provider, apiKey, modelId, text, mode, type, forei
     const config = await loadProxyConfig();
     const baseUrl = (config.baseUrl || 'https://api.nexusmmo.store/v1').replace(/\/+$/, '');
     const authKey = config.apiKey || apiKey;
+    if (!authKey) throw new Error('Thiếu API Key cho Provider Proxy. Vui lòng nhập Proxy Key hoặc cấu hình ADMIN_KEY trên server.');
     const model = modelId || config.model || 'deepseek-v4-flash';
 
     const url = `${baseUrl}/chat/completions`;
@@ -428,15 +433,17 @@ async function runParallelExtraction({
   
   // Trình chạy luồng (Worker)
   async function worker() {
-    while (queue.length > 0) {
+    const globalSignal = (typeof window !== 'undefined') ? window.__extractAbortSignal : null;
+    const isAborted = () => globalSignal ? globalSignal.aborted : false;
+    while (queue.length > 0 && !isAborted()) {
       const task = queue.shift();
-      if (!task) break;
+      if (!task || isAborted()) break;
       
       let attempt = 0;
       let success = false;
       let lastError = null;
       
-      while (attempt < retries && !success) {
+      while (attempt < retries && !success && !isAborted()) {
         attempt++;
         try {
           const data = await extractChunk({
@@ -466,7 +473,11 @@ async function runParallelExtraction({
           // Chờ một khoảng thời gian tăng dần trước khi gọi lại (exponential backoff)
           if (attempt < retries) {
             const waitMs = Math.min(10000, 1000 * Math.pow(2, attempt) + Math.random() * 500);
-            await new Promise(resolve => setTimeout(resolve, waitMs));
+            await new Promise((resolve) => {
+              const t = setTimeout(resolve, waitMs);
+              if (globalSignal) globalSignal.addEventListener('abort', () => { clearTimeout(t); resolve(); }, { once: true });
+            });
+            if (isAborted()) break;
           }
         }
       }

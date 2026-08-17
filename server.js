@@ -1,4 +1,4 @@
-const express = require('express');
+﻿const express = require('express');
 const cors = require('cors');
 const fs = require('fs');
 const path = require('path');
@@ -31,11 +31,31 @@ app.use(cors({
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
+app.disable('x-powered-by');
+
+const RATE_LIMIT_PER_MIN = parseInt(process.env.RATE_LIMIT_PER_MIN || '60', 10);
+const rateBuckets = new Map();
+function rateLimit(req, res, next) {
+    const ip = req.ip || req.connection.remoteAddress || 'unknown';
+    const now = Date.now();
+    const bucket = rateBuckets.get(ip);
+    if (!bucket || now - bucket.start > 60000) {
+        rateBuckets.set(ip, { start: now, count: 1 });
+    } else {
+        bucket.count++;
+        if (bucket.count > RATE_LIMIT_PER_MIN) {
+            return res.status(429).json({ success: false, error: 'Too many requests. Vui lòng thử lại sau.' });
+        }
+    }
+    if (rateBuckets.size > 10000) rateBuckets.clear();
+    next();
+}
+
 // Lỗi 6: Middleware xác thực cho các endpoint ghi file (chỉ localhost hoặc có ADMIN_KEY)
 function requireAdminKey(req, res, next) {
     const ip = req.ip || req.connection.remoteAddress || '';
     const isLocal = ip === '127.0.0.1' || ip === '::1' || ip === '::ffff:127.0.0.1';
-    if (isLocal) return next();
+    if (process.env.NODE_ENV !== 'production' && isLocal) return next();
     if (ADMIN_KEY && req.headers['x-admin-key'] === ADMIN_KEY) return next();
     return res.status(403).json({ success: false, error: 'Forbidden: Admin key required' });
 }
@@ -64,7 +84,7 @@ const isProperName = _filterSandbox.isProperName;
 console.log('✅ Đã load filter.js (bộ lọc 4 lớp)');
 
 // API: POST /api/filter - Lọc Names sạch bằng filter.js (4 lớp)
-app.post('/api/filter', (req, res) => {
+app.post('/api/filter', rateLimit, (req, res) => {
     try {
         const { names = [] } = req.body;
         const clean = [];
@@ -84,7 +104,7 @@ app.post('/api/filter', (req, res) => {
             }
             if (entry.isTrash) { trash.push(entry); return; }
 
-            // LÃ¡Â»Âc qua isProperName cÃ¡Â»Â§a filter.js (4 lÃ¡Â»â€ºp)
+            // Lọc qua isProperName của filter.js (4 lớp)
             const type = entry.reading === 'foreign' ? (entry.category === 'anime' ? 'anime' : 'western') : 'eastern';
             if (isProperName(zh, vi, type)) {
                 clean.push(entry);
@@ -114,7 +134,7 @@ app.get('/api/get-ignore', (req, res) => {
 });
 
 // API: POST /api/save-ignore - Lưu từ cấm (user feature, không cần auth)
-app.post('/api/save-ignore', (req, res) => {
+app.post('/api/save-ignore', requireAdminKey, rateLimit, (req, res) => {
     try {
         const rulesFile = path.join(DATA_DIR, 'ignore_rules.txt');
         let newRules = [];
@@ -146,7 +166,7 @@ app.post('/api/save-ignore', (req, res) => {
 });
 
 // API: GET /api/get-names - Đọc danh sách Names.txt
-app.get('/api/get-names', (req, res) => {
+app.get('/api/get-names', requireAdminKey, (req, res) => {
     try {
         const namesFile = path.join(DATA_DIR, 'Names.txt');
         let text = '';
@@ -160,7 +180,7 @@ app.get('/api/get-names', (req, res) => {
 });
 
 // API: POST /api/save-names - Nạp danh sách Names sạch mới (Lỗi 6: thêm requireAdminKey)
-app.post('/api/save-names', requireAdminKey, (req, res) => {
+app.post('/api/save-names', requireAdminKey, rateLimit, (req, res) => {
     try {
         const { names = [] } = req.body;
         const namesFile = path.join(DATA_DIR, 'Names.txt');
@@ -190,14 +210,15 @@ app.post('/api/save-names', requireAdminKey, (req, res) => {
     }
 });
 
-// Ã¢â€ â‚¬Ã¢â€ â‚¬ TÃƒÂ CH HÃ¡Â»Â¢P AI EXTRACTOR (NEXUSMMO / OPENAI-COMPATIBLE PROXY) (PORT 4000) Ã¢â€ â‚¬Ã¢â€ â‚¬
-const RAW_KEYS = process.env.NEXUS_API_KEYS || process.env.API_KEYS || process.env.API_KEY || 'sk-4eed513be74dc270184953c24e8a039be6fbbb49f289a2a72add1cb65424bd5b';
+// TÍCH HỢP AI EXTRACTOR (NEXUSMMO / OPENAI-COMPATIBLE PROXY)
+const RAW_KEYS = process.env.NEXUS_API_KEYS || process.env.API_KEYS || process.env.API_KEY || '';
 const API_KEYS = RAW_KEYS.split(',').map(k => k.trim()).filter(Boolean);
 const BASE_URL = (process.env.NEXUS_BASE_URL || process.env.BASE_URL || 'https://api.nexusmmo.store/v1').replace(/\/+$/, '');
 const MODEL_NAME = process.env.MODEL_NAME || 'deepseek-v4-flash';
 
 let keyCounter = 0;
 function getNextApiKey() {
+    if (!API_KEYS.length) throw new Error('Chưa cấu hình NEXUS_API_KEYS / API_KEYS trên server.');
     const key = API_KEYS[keyCounter % API_KEYS.length];
     keyCounter++;
     return key;
@@ -229,8 +250,8 @@ function _loadHVDict() {
 function _fixLiSpelling(str) {
     if (!str) return '';
     return str.split(/\s+/).map(w => {
-        if (w === 'Li') return 'LÃƒÂ½';
-        if (w === 'li') return 'lÃƒÂ½';
+        if (w === 'Li') return 'Lý';
+        if (w === 'li') return 'lý';
         return w;
     }).join(' ');
 }
@@ -254,7 +275,7 @@ function _isHan(c) {
 
 function _cleanCNPunct(str) {
     if (!str) return '';
-    return str.replace(/^[\s"'\u201c\u201d\u2018\u2019Ã‚Â«Ã‚Â»Ã£â‚¬Å Ã£â‚¬â€¹Ã£â‚¬Å’Ã£â‚¬ÂÃ£â‚¬Å½Ã£â‚¬ÂÃ£â‚¬ÂÃ£â‚¬â€˜Ã¯Â¼Ë†Ã¯Â¼â€°\(\)\[\]{}Ã¢â€â‚¬Ã¢â‚¬â€Ã¢â‚¬â€œ\-.,;:!?]+|[\s"'\u201c\u201d\u2018\u2019Ã‚Â«Ã‚Â»Ã£â‚¬Å Ã£â‚¬â€¹Ã£â‚¬Å’Ã£â‚¬ÂÃ£â‚¬Å½Ã£â‚¬ÂÃ£â‚¬ÂÃ£â‚¬â€˜Ã¯Â¼Ë†Ã¯Â¼â€°\(\)\[\]{}Ã¢â€â‚¬Ã¢â‚¬â€Ã¢â‚¬â€œ\-.,;:!?]+$/g, '').trim();
+    return str.replace(/^[\s"'«»《》「」『』【】（）()\[\]{}—–\-.,;:!?]+|[\s"'«»《》「」『』【】（）()\[\]{}—–\-.,;:!?]+$/g, '').trim();
 }
 
 function _loadExistingNames() {
@@ -281,19 +302,19 @@ function _isProperEastern(cn, vi) {
     const viLower = vi.toLowerCase().trim();
 
     const badWords = [
-        'ngÃ†Â°Ã†Â¡i', 'ta', 'hÃ¡ÂºÂ¯n', 'nÃƒÂ ng', 'bÃ¡Â»Ân hÃ¡Â»Â', 'chÃƒÂºng ta',
-        'cÃƒÂ¡i gÃƒÂ¬', 'thÃ¡ÂºÂ¿ nÃƒÂ o', 'bÃ¡Â»Å¸i vÃƒÂ¬', 'cho nÃƒÂªn', 'tuy rÃ¡ÂºÂ±ng', 'nhÃ†Â°ng lÃƒÂ ',
-        'chÃƒÂ­nh lÃƒÂ ', 'bÃ¡ÂºÂ¥t quÃƒÂ¡', 'nÃ¡ÂºÂ¿u nhÃ†Â°', 'ngay cÃ¡ÂºÂ£', 'khÃƒÂ´ng cÃƒÂ³', 'khÃƒÂ´ng thÃ¡Â»Æ’',
-        'nhÃ†Â° thÃ¡ÂºÂ¿ nÃƒÂ o', 'Ã¡Â»Å¸ trong', 'bÃƒÂªn trong', 'mÃ¡Â»â„¢t cÃƒÂ¡i', 'hai cÃƒÂ¡i', 'ba cÃƒÂ¡i',
-        'bÃ¡Â»â€˜n cÃƒÂ¡i', 'nÃ„Æ’m cÃƒÂ¡i', 'tiÃ¡Â»Æ’u tÃ¡Â»Â­', 'Ã„â€˜Ã¡ÂºÂ¡i hÃƒÂ¡n', 'lÃƒÂ£o nhÃƒÂ¢n', 'thanh niÃƒÂªn',
-        'thiÃ¡ÂºÂ¿u niÃƒÂªn', 'thiÃ¡ÂºÂ¿u nÃ¡Â»Â¯', 'cÃƒÂ´ nÃ†Â°Ã†Â¡ng', 'huynh Ã„â€˜Ã¡Â»â€¡',
-        'sÃ†Â° huynh', 'sÃ†Â° tÃ¡Â»Â·', 'sÃ†Â° muÃ¡Â»â„¢i', 'sÃ†Â° Ã„â€˜Ã¡Â»â€¡', 'lÃƒÂ£o gia', 'phu nhÃƒÂ¢n',
-        'tiÃ¡Â»Æ’u thÃ†Â°', 'trÃ†Â°Ã¡Â»Å¸ng lÃƒÂ£o', 'mÃƒÂ´n chÃ¡Â»Â§', 'bang chÃ¡Â»Â§', 'gia chÃ¡Â»Â§',
-        'quÃƒÂ¢n sÃ†Â°', 'chÃ¡Â»Â§ nhÃƒÂ¢n', 'Ã„â€˜Ã¡Â»â€¡ tÃ¡Â»Â­', 'hoÃƒÂ ng Ã„â€˜Ã¡ÂºÂ¿', 'thÃƒÂ¡i tÃ¡Â»Â­',
-        'cÃƒÂ´ng chÃƒÂºa', 'hoÃƒÂ ng tÃ¡Â»Â­', 'Ã„â€˜Ã¡ÂºÂ¡i nhÃƒÂ¢n', 'tiÃ¡Â»Ân bÃ¡Â»â€˜i', 'Ã„â€˜Ã¡ÂºÂ¡o hÃ¡Â»Â¯u',
-        'tÃ†Â°Ã¡Â»â€ºng quÃƒÂ¢n', 'phÃƒÂ¡p sÃ†Â°', 'tu sÃ„Â©', 'phÃƒÂ m nhÃƒÂ¢n', 'nhÃƒÂ¢n vÃ¡ÂºÂ­t'
+        'người', 'ta', 'hắn', 'nàng', 'bọn họ', 'chúng ta',
+        'cái gì', 'thế nào', 'bởi vì', 'cho nên', 'tuy rằng', 'nhưng là',
+        'chính là', 'bất quá', 'nếu như', 'ngay cả', 'không có', 'không thể',
+        'như thế nào', 'ở trong', 'bên trong', 'một cái', 'hai cái', 'ba cái',
+        'bốn cái', 'năm cái', 'tiểu tử', 'đại hán', 'lão nhân', 'thanh niên',
+        'thiếu niên', 'thiếu nữ', 'cô nương', 'huynh đệ',
+        'sư huynh', 'sư tỷ', 'sư muội', 'sư đệ', 'lão gia', 'phu nhân',
+        'tiểu thư', 'trưởng lão', 'môn chủ', 'bang chủ', 'gia chủ',
+        'quân sư', 'chủ nhân', 'đệ tử', 'hoàng đế', 'thái tử',
+        'công chúa', 'hoàng tử', 'đại nhân', 'tiền bối', 'đạo hữu',
+        'tướng quân', 'pháp sư', 'tu sĩ', 'phàm nhân', 'nhân vật'
     ];
-    // Pad chuÃ¡Â»â€”i Ã„â€˜Ã¡Â»Æ’ match word-boundary, trÃƒÂ¡nh substring false positive (vd: 'ta' khÃ¡Â»â€ºp 'tam')
+    // Pad chuỗi để match word-boundary, tránh substring false positive (vd: 'ta' khớp 'tam')
     const paddedVi = ' ' + viLower + ' ';
     for (const bw of badWords) {
         if (viLower === bw || paddedVi.includes(' ' + bw + ' ')) return false;
@@ -311,7 +332,7 @@ async function _callDeepSeekChunk(text, batchIdx, totalBatches, prompt, timeoutM
             model: MODEL_NAME,
             messages: [
                 { role: 'system', content: prompt },
-                { role: 'user', content: `[VÃ„Æ’n bÃ¡ÂºÂ£n cÃ¡ÂºÂ§n phÃƒÂ¢n tÃƒÂ­ch ${batchIdx + 1}/${totalBatches}]\n\n${text}` }
+                { role: 'user', content: `[Văn bản cần phân tích ${batchIdx + 1}/${totalBatches}]\n\n${text}` }
             ],
             temperature: 0.1,
             max_tokens: 4096,
@@ -336,8 +357,8 @@ async function _callDeepSeekChunk(text, batchIdx, totalBatches, prompt, timeoutM
 }
 
 
-// API: POST /api/extract-names - BÃƒÂ³c tÃƒÂ¡ch tÃƒÂªn bÃ¡ÂºÂ±ng DeepSeek
-app.post('/api/extract-names', async (req, res) => {
+// API: POST /api/extract-names - Bóc tách tên bằng DeepSeek
+app.post('/api/extract-names', requireAdminKey, rateLimit, async (req, res) => {
     try {
         const { text = '' } = req.body;
         if (!text.trim()) return res.json({ success: true, clean: [], trash: [] });
@@ -366,7 +387,7 @@ app.post('/api/extract-names', async (req, res) => {
             'Do not summarize, continue, translate, classify, judge, or describe sensitive events from the source text.',
             'Only extract proper names and minimal entity metadata needed by the JSON schema.',
             'Return exactly one valid JSON object. No markdown. No prose. No second JSON object. No text before or after JSON.',
-            'Schema: {"names":[{"chinese":"Ã¥â€ÂÃ¤Â¸â€°","hanviet":"Ã„ÂÃ†Â°Ã¡Â»Âng Tam","reading":"hanviet","category":"Person|Location|Faction|Artifact|Skill|Title|Creature","description":"","count":1}]}',
+            'Schema: {"names":[{"chinese":"子三","hanviet":"Đường Tam","reading":"hanviet","category":"Person|Location|Faction|Artifact|Skill|Title|Creature","description":"","count":1}]}',
             'Rules:',
             'Primary goal: high recall. It is better to include a plausible proper name than to miss it.',
             '- Scan the chunk twice internally before answering: first for obvious names, second for rare/one-off names.',
@@ -377,8 +398,8 @@ app.post('/api/extract-names', async (req, res) => {
             '- For ambiguous 2-4 Chinese character phrases, include them if context treats them like a person, place, faction, item, skill, title, or creature.',
             '- Set "reading" to "hanviet" for every extracted entity.',
             '- This text is Eastern/Chinese fantasy. The "hanviet" field must be Vietnamese Sino-reading with full Vietnamese diacritics, title case with spaces.',
-            '- Never output unaccented romanization. Bad: Truong Sinh Benh. Good: TrÃ†Â°Ã¡Â»Âng Sinh BÃ¡Â»â€¡nh.',
-            '- Keep chinese exactly as it appears in the source. Strip surrounding Ã£â‚¬Å Ã£â‚¬â€¹, "", Ã£â‚¬ÂÃ£â‚¬â€˜ and age/duration prefixes like Ã¥ÂÂÃ¤Â¸â€¡Ã¥Â¹Â´ from extracted entity.',
+            '- Never output unaccented romanization. Bad: Truong Sinh Benh. Good: Trường Sinh Bệnh.',
+            '- Keep chinese exactly as it appears in the source. Strip surrounding 《》, "", 【】 and age/duration prefixes like 十万年 from extracted entity.',
             '- Do not merge different Chinese spellings even if they may refer to the same entity.',
             '- Do not drop a valid entity just because its count is 1.',
             '- Always set description to an empty string.',
@@ -441,7 +462,7 @@ app.post('/api/extract-names', async (req, res) => {
                 const raw  = data.choices?.[0]?.message?.content || '{}';
                 const parsed = parseJSONSafe(raw);
                 if (!parsed || !Array.isArray(parsed.names) || parsed.names.length === 0) {
-                    console.log(`[Extract] Chunk ${chunkIdx + 1}/${totalChunks} khÃƒÂ´ng cÃƒÂ³ tÃƒÂªn: ${String(raw).slice(0, 200)}`);
+                    console.log(`[Extract] Chunk ${chunkIdx + 1}/${totalChunks} không có tên: ${String(raw).slice(0, 200)}`);
                 }
                 return parsed?.names || [];
             } catch(e) { clearTimeout(timer); throw e; }
@@ -465,7 +486,7 @@ app.post('/api/extract-names', async (req, res) => {
                         allRaw.push(...names);
                         ok = true;
                     } catch(e) {
-                        console.error(`[Extract] Worker lÃ¡Â»â€”i chunk ${i + 1}/${total}: ${e.message}`);
+                        console.error(`[Extract] Worker lỗi chunk ${i + 1}/${total}: ${e.message}`);
                         if (attempt < RETRIES) await new Promise(r => setTimeout(r, Math.min(8000, 1000 * Math.pow(2, attempt))));
                     }
                 }
@@ -475,11 +496,11 @@ app.post('/api/extract-names', async (req, res) => {
 
         // Ã¢â€â‚¬Ã¢â€â‚¬ Filter nhÃ¡ÂºÂ¹: ignore_rules + chÃ¡Â»Â©c xÃ†Â°ng cÃ†Â¡ bÃ¡ÂºÂ£n Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
         const commonTitles = new Set([
-            'cÃƒÂ´ng tÃ¡Â»Â­','thÃ¡ÂºÂ¿ tÃ¡Â»Â­','sÃ†Â° huynh','sÃ†Â° tÃ¡Â»Â·','sÃ†Â° muÃ¡Â»â„¢i','sÃ†Â° Ã„â€˜Ã¡Â»â€¡','lÃƒÂ£o gia','phu nhÃƒÂ¢n',
-            'tiÃ¡Â»Æ’u thÃ†Â°','trÃ†Â°Ã¡Â»Å¸ng lÃƒÂ£o','mÃƒÂ´n chÃ¡Â»Â§','bang chÃ¡Â»Â§','gia chÃ¡Â»Â§','hoÃƒÂ ng Ã„â€˜Ã¡ÂºÂ¿','thÃƒÂ¡i tÃ¡Â»Â­',
-            'cÃƒÂ´ng chÃƒÂºa','hoÃƒÂ ng tÃ¡Â»Â­','Ã„â€˜Ã¡ÂºÂ¡i nhÃƒÂ¢n','tiÃ¡Â»Ân bÃ¡Â»â€˜i','Ã„â€˜Ã¡ÂºÂ¡o hÃ¡Â»Â¯u','tÃ†Â°Ã¡Â»â€ºng quÃƒÂ¢n','phÃƒÂ¡p sÃ†Â°',
-            'tu sÃ„Â©','vÃƒÂµ giÃ¡ÂºÂ£','hoÃƒÂ ng hÃ¡ÂºÂ­u','thÃƒÂ¡i hÃ¡ÂºÂ­u','bÃƒÂ¡c sÃ„Â©','thÃƒÂ nh chÃ¡Â»Â§','viÃ¡Â»â€¡n trÃ†Â°Ã¡Â»Å¸ng',
-            'chÃ†Â°Ã¡Â»Å¸ng mÃƒÂ´n','lÃƒÂ£o tÃ¡Â»â€¢','yÃƒÂªu ma','yÃƒÂªu thÃƒÂº','dÃ¡Â»â€¹ thÃƒÂº','thÃ¡ÂºÂ§n thÃƒÂº','linh thÃƒÂº','ma thÃƒÂº'
+            'công tử','thế tử','sư huynh','sư tỷ','sư muội','sư đệ','lão gia','phu nhân',
+            'tiểu thư','trưởng lão','môn chủ','bang chủ','gia chủ','hoàng đế','thái tử',
+            'công chúa','hoàng tử','đại nhân','tiền bối','đạo hữu','tướng quân','pháp sư',
+            'tu sĩ','võ giả','hoàng hậu','thái hậu','bác sĩ','thành chủ','viện trưởng',
+            'chưởng môn','lão tổ','yêu ma','yêu thú','dị thú','thần thú','linh thú','ma thú'
         ]);
 
         const cleanMap  = new Map();
@@ -519,11 +540,12 @@ app.post('/api/extract-names', async (req, res) => {
 // Lỗi 2: Thêm /api/ai-config để frontend lấy được baseUrl + model + apiKey từ env
 app.get('/api/ai-config', (req, res) => {
     const keys = RAW_KEYS_EARLY.split(',').map(k => k.trim()).filter(Boolean);
+    const isAdmin = Boolean(ADMIN_KEY) && req.headers['x-admin-key'] === ADMIN_KEY;
     res.json({
         success: true,
         baseUrl: BASE_URL_EARLY,
         model: MODEL_NAME_EARLY,
-        apiKey: keys[0] || ''
+        apiKey: isAdmin ? (keys[0] || '') : ''
     });
 });
 
@@ -534,7 +556,7 @@ const PROXY_ALLOWED_HOSTS = new Set([
     'generativelanguage.googleapis.com'
 ]);
 
-app.post('/api/proxy-extract', async (req, res) => {
+app.post('/api/proxy-extract', rateLimit, async (req, res) => {
     try {
         const { targetUrl, headers, body } = req.body;
         if (!targetUrl) {
@@ -563,8 +585,19 @@ app.post('/api/proxy-extract', async (req, res) => {
     }
 });
 
+// Health check cho Render
+app.get('/healthz', (req, res) => {
+    res.json({ success: true, status: 'ok' });
+});
+
 // Lỗi 4: Chỉ serve thư mục public/ thay vì toàn bộ APP_DIR để không lộ server.js, package.json, data/
-app.use(express.static(PUBLIC_DIR));
+app.use(express.static(PUBLIC_DIR, {
+    dotfiles: 'deny',
+    index: 'index.html',
+    setHeaders: (res, filePath) => {
+        if (filePath.endsWith('.html')) res.setHeader('Cache-Control', 'no-cache');
+    }
+}));
 
 const server = app.listen(PORT, () => {
     console.log(`✅ Name Extractor server listening on port ${PORT}`);

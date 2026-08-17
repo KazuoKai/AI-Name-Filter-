@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="vi">
 <head>
   <meta charset="UTF-8">
@@ -91,7 +91,7 @@
 
         <!-- Cấu hình spelling quốc tế / Nhật - Hàn (ẩn mặc định, hiện khi chọn Anime hoặc Quốc tế) -->
         <div id="western-spelling-config" class="input-wrapper hidden" style="margin-top: 12px;">
-          <label style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 6px; display: block;">
+          <label style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 6px; display: block;"><span id="spell-count-text" style="float: right; color: #a78bfa; font-weight: 600;">2/7</span>
             Tick chọn loại giữ spelling Anime / Quốc tế (bỏ tick sẽ dùng Hán Việt):
           </label>
           <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; background: rgba(0,0,0,0.2); padding: 8px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.05);">
@@ -172,6 +172,19 @@
         <label class="group-title"><i data-lucide="shield-alert"></i> Từ Bỏ Qua (Cấm trích xuất)</label>
         <p class="desc-text">Nhập danh sách từ muốn loại bỏ hoàn toàn khỏi kết quả (mỗi dòng 1 từ, Trung hoặc Việt):</p>
         <textarea id="custom-rules" placeholder="Ví dụ:&#10;灭世&#10;序列&#10;自信&#10;服气"></textarea>
+      <!-- Admin Key để lưu cấu hình chung trên VPS -->
+      <div class="settings-group card">
+        <label class="group-title"><i data-lucide="shield-check"></i> Admin VPS</label>
+        <div class="input-wrapper">
+          <label for="admin-key">Admin Key (bắt buộc để lưu cấu hình chung)</label>
+          <div class="password-input">
+            <input type="password" id="admin-key" placeholder="Nhập ADMIN_KEY đã đặt trên server..." autocomplete="off">
+            <button class="toggle-password" type="button" onclick="togglePasswordVisibility('admin-key')">
+              <i data-lucide="eye"></i>
+            </button>
+          </div>
+        </div>
+      </div>
       </div>
     </aside>
     
@@ -347,7 +360,7 @@
   <!-- Nhúng các script logic -->
   <script src="dict_data.js?v=32"></script>
   <script src="filter.js?v=32"></script>
-  <script src="api.js?v=32"></script>
-  <script src="app.js?v=32"></script>
+  <script src="api.js?v=35"></script>
+  <script src="app.js?v=35"></script>
 </body>
 </html>

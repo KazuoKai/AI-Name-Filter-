@@ -1,0 +1,21 @@
+services:
+  - type: web
+    name: name-extractor-web
+    env: node
+    region: singapore
+    plan: free
+    buildCommand: npm ci --omit=dev
+    startCommand: node server.js
+    healthCheckPath: /healthz
+    autoDeploy: true
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: ADMIN_KEY
+        sync: false
+      - key: ALLOWED_ORIGIN
+        value: https://your-app.onrender.com
+      - key: RATE_LIMIT_PER_MIN
+        value: "60"
+      - key: NEXUS_API_KEYS
+        sync: false
