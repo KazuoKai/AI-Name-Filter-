@@ -1,4 +1,4 @@
-﻿// app.js - Điều khiển giao diện (UI) và điều phối tiến trình trích xuất
+// app.js - Điều khiển giao diện (UI) và điều phối tiến trình trích xuất
 
 // Cấu hình Model cho 3 Nền tảng (Google Gemini Chính Thức, DeepSeek Chính Thức, Proxy Trung Gian)
 const modelsMap = {
@@ -79,7 +79,6 @@ document.addEventListener("DOMContentLoaded", () => {
   
   // Load các khóa đã lưu từ localStorage (gọi trước mọi thứ khác)
   loadSettings();
-  // Lỗi 2 đã sửa: bỏ phần hardcode provider và model ở dưới — để loadSettings() quyết định
 
   loadProxyConfig().then(cfg => {
     const keyInput = document.getElementById("deepseek-key");
@@ -140,7 +139,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
 function updateSpellCountBadge() {
   const checkedCount = document.querySelectorAll(".spell-cat-checkbox:checked").length;
-  // Lỗi 3: dùng optional chaining tránh crash khi element không tồn tại
   const el = document.getElementById("spell-count-text");
   if (el) el.innerText = `${checkedCount}/7`;
 }
@@ -219,7 +217,6 @@ function setupToggleButtons(groupId) {
         const configPanel = document.getElementById("western-spelling-config");
         if (val === "western" || val === "anime") {
           configPanel.classList.remove("hidden");
-          // Tự động gợi ý mặc định phù hợp cho Nhật-Hàn (Nhân vật + Kỹ năng) hoặc Quốc tế (Nhân vật + Địa danh)
           if (val === "anime") {
             document.querySelectorAll(".spell-cat-checkbox").forEach(cb => {
               const cVal = cb.getAttribute("data-value");
@@ -291,14 +288,12 @@ function loadSettings() {
   const ms = document.getElementById("model-select");
   if (savedProvider && ps) {
     ps.value = savedProvider;
-    handleProviderChange(); // build lại model dropdown theo provider
-    // Set model SAU khi handleProviderChange đã tạo options
+    handleProviderChange();
     if (ms) {
       const modelExists = Array.from(ms.options).some(o => o.value === savedModel);
       ms.value = modelExists ? savedModel : (modelsMap[ps.value]?.[0]?.value || '');
     }
   } else {
-    // Lần đầu dùng: mặc định proxy
     if (ps) ps.value = 'proxy';
     handleProviderChange();
   }
@@ -327,15 +322,12 @@ function parseCustomRules() {
     if (!trimmed) return;
 
     const lowerRule = trimmed.toLowerCase();
-    // Nạp exact match vào Set (O(1))
     ignoreRulesSet.add(lowerRule);
 
-    // Rule nhiều từ (có khoảng trắng) → cần substring matching
     if (lowerRule.includes(' ')) {
       ignoreSubList.push(lowerRule);
     }
 
-    // Tự động dịch chữ Hán → Hán Việt và nạp vào cả exact + substring
     if (typeof Po !== "undefined" && Po(trimmed)) {
       const viTrans = translateChineseToHanViet(trimmed);
       if (viTrans) {
@@ -349,9 +341,7 @@ function parseCustomRules() {
 
 // Helper kiểm tra 1 entry có bị cấm không – dùng chung toàn bộ app
 function isIgnoredItem(cnLower, viLower) {
-  // Fast path: exact Set lookup O(1)
   if (ignoreRulesSet.has(cnLower) || ignoreRulesSet.has(viLower)) return true;
-  // Slow path: chỉ chạy khi có rule nhiều từ (substring)
   for (const rule of ignoreSubList) {
     if (cnLower.includes(rule) || viLower.includes(rule)) return true;
   }
@@ -381,18 +371,13 @@ async function startExtraction() {
     return;
   }
   
-  // Lưu Key vào local storage
   saveSettings();
-  
-  // Phân tích quy tắc tùy chỉnh Hán Việt
   parseCustomRules();
   
-  // Đọc các tham số giao diện
   const modelId = document.getElementById("model-select").value;
   const type = getActiveToggleValue("novel-type-group");
-  const mode = "balanced"; // Mặc định cân bằng
+  const mode = "balanced";
   
-  // Thu thập danh sách category được tick giữ spelling quốc tế
   const foreignReadingCategories = [];
   document.querySelectorAll(".spell-cat-checkbox:checked").forEach(cb => {
     foreignReadingCategories.push(cb.getAttribute("data-value"));
@@ -404,26 +389,21 @@ async function startExtraction() {
   const retries = parseInt(document.getElementById("retries").value) || 2;
   const timeoutSecs = parseInt(document.getElementById("timeout").value) || 90;
   
-  // Reset thống kê chi phí trên UI
   document.getElementById("progress-tokens").innerText = "0";
   document.getElementById("progress-cost").innerText = "0đ";
   document.getElementById("final-tokens").innerText = "0";
   document.getElementById("final-cost").innerText = "0đ";
 
-  // Biến lưu trữ số lượng tokens thực tế
   let totalPromptTokens = 0;
   let totalCompletionTokens = 0;
 
-  // Kiểm tra giờ cao điểm của DeepSeek (Giờ Việt Nam UTC+7: 8:00-11:00 và 13:00-17:00)
   function isDeepSeekPeakHour() {
     const now = new Date();
     const hr = now.getHours();
     const min = now.getMinutes();
     const timeVal = hr + min / 60;
     
-    // Khung 1: 8:00 - 11:00 sáng
     const isMorningPeak = (timeVal >= 8.0 && timeVal <= 11.0);
-    // Khung 2: 13:00 - 17:00 chiều
     const isAfternoonPeak = (timeVal >= 13.0 && timeVal <= 17.0);
     
     return isMorningPeak || isAfternoonPeak;
@@ -435,7 +415,6 @@ async function startExtraction() {
     let outputMultiplier = 1;
     let peakWarning = "";
     
-    // Nếu mô hình thuộc DeepSeek và đang ở khung giờ cao điểm -> x2 giá
     if (provider === "deepseek" && isDeepSeekPeakHour()) {
       inputMultiplier = 2;
       outputMultiplier = 2;
@@ -443,40 +422,32 @@ async function startExtraction() {
     }
     
     const totalTokens = totalPromptTokens + totalCompletionTokens;
-    // Tính tiền
     const costUsd = (totalPromptTokens / 1000000) * pricing.input * inputMultiplier + 
                     (totalCompletionTokens / 1000000) * pricing.output * outputMultiplier;
-    const costVnd = Math.ceil(costUsd * 25400); // 1 USD = 25,400 VND
+    const costVnd = Math.ceil(costUsd * 25400);
 
-    // Hiển thị ở Panel tiến trình
     document.getElementById("progress-tokens").innerText = totalTokens.toLocaleString();
     document.getElementById("progress-cost").innerText = `${costVnd.toLocaleString()}đ${peakWarning}`;
 
-    // Hiển thị ở Panel kết quả
     document.getElementById("final-tokens").innerText = totalTokens.toLocaleString();
     document.getElementById("final-cost").innerText = `${costVnd.toLocaleString()}đ${peakWarning}`;
   }
 
-  // Chia nhỏ text
   const chunks = splitTextIntoChunks(rawText, chunkSize, overlap);
   if (chunks.length === 0) return;
   
-  // Hiển thị Panel tiến trình
   const progressPanel = document.getElementById("progress-panel");
   const resultsPanel = document.getElementById("results-panel");
   progressPanel.classList.remove("hidden");
   resultsPanel.classList.add("hidden");
   
-  // Reset logs & progress bar
   const logBox = document.getElementById("progress-log");
   logBox.innerHTML = `<p class="info">Khởi tạo tiến trình. Tổng số chunk cần xử lý: ${chunks.length}</p>`;
   updateProgressBar(0, 0, chunks.length);
   
-  // Khởi tạo bộ nhớ danh sách kết quả tạm
   cleanNamesList = [];
   trashNamesList = [];
   
-  // Lỗi 9: AbortController toàn cục – hủy thực sự các fetch đang chạy
   let isCancelled = false;
   const abortController = new AbortController();
   currentExtractionController = {
@@ -505,7 +476,6 @@ async function startExtraction() {
       },
       onChunkSuccess: (index, names, usage) => {
         if (isCancelled) return;
-        // Cộng dồn token thực tế từ API response
         totalPromptTokens += usage.promptTokens || 0;
         totalCompletionTokens += usage.completionTokens || 0;
         updateCostDisplay();
@@ -528,7 +498,6 @@ async function startExtraction() {
       return;
     }
     
-    // Áp dụng bộ lọc nâng cao tần suất + hậu tố cho các danh mục phi nhân vật
     const finalClean = [];
     const finalTrash = [...trashNamesList];
     const genericBaseSuffixes = [
@@ -551,20 +520,17 @@ async function startExtraction() {
           item.category !== "Skill" &&
           item.category !== "Artifact") {
         
-        // Không tự ý lọc các danh từ chứa "之" (mệnh danh đặc biệt, sở hữu cách)
         if (item.chinese.includes("之")) {
           finalClean.push(item);
           return;
         }
         
-        // Loại bỏ hoàn toàn các từ trong danh sách Từ bỏ qua (Cấm trích xuất)
         const isIgnored = ignoreRulesSet.has(item.chinese.toLowerCase()) || 
                           ignoreRulesSet.has(item.hanviet.toLowerCase());
         if (isIgnored) {
           return;
         }
 
-        // Bỏ qua lọc đối với danh sách từ tích lũy cũ
         const isBypassed = referenceDictMap.has(item.chinese);
         if (isBypassed) {
           finalClean.push(item);
@@ -583,10 +549,8 @@ async function startExtraction() {
     cleanNamesList = finalClean;
     trashNamesList = finalTrash;
     
-    // Cập nhật giao diện bảng kết quả
     renderTables();
     
-    // Ẩn panel tiến trình và hiện kết quả
     setTimeout(() => {
       progressPanel.classList.add("hidden");
       resultsPanel.classList.remove("hidden");
@@ -649,11 +613,9 @@ function processAndFilterNames(namesArray, type, foreignReadingCategories) {
   namesArray.forEach(item => {
     if (!item.chinese || !item.hanviet) return;
     
-    // Tự động gọt bỏ ngoặc sách 《》, ngoặc kép “”, ngoặc vuông 【】 và tiền tố thời gian/niên đại (xx năm / thập vạn niên / vạn niên...) bao quanh tên riêng
     const cn = (typeof cleanEntityPunctuation === "function" ? cleanEntityPunctuation(item.chinese) : item.chinese.replace(/^[《“"\'【‹「«\s]+|[》”"\'】›」»\s]+$/g, "").replace(/^(?:[0-9一二三四五六七八九十百千万亿]+\s*年|十万年|百万年|千万年|亿年|万年|千年|百年|十年)\s*/, "")).trim();
     let vi = (typeof cleanEntityPunctuation === "function" ? cleanEntityPunctuation(item.hanviet) : item.hanviet.replace(/^[《“"\'【‹「«\s]+|[》”"\'】›」»\s]+$/g, "")).trim();
     
-    // Gọt bỏ tiền tố thời gian Hán-Việt ở đầu (ví dụ: thập vạn niên, bách vạn niên, vạn niên, thiên niên, bách niên, thập niên...)
     const timePrefixVI = /^(?:thập vạn niên|bách vạn niên|thiên vạn niên|ức niên|vạn niên|thiên niên|bách niên|thập niên|[0-9]+\s*niên)\s*/i;
     vi = vi.replace(timePrefixVI, "").trim();
     
@@ -663,13 +625,9 @@ function processAndFilterNames(namesArray, type, foreignReadingCategories) {
     const count = parseInt(item.count) || 1;
     const isForeignCat = (type === "western" || type === "anime") && foreignCats.includes(cat);
     
-    // Bản dịch Hán Việt gốc của AI
     let viRaw = vi;
-    
-    // Tra cứu dịch nghĩa trước để có bản dịch Hán Việt hiển thị thực tế và viết hoa chuẩn
     let viTranslated = vi;
     if (isForeignCat) {
-      // 1. Nếu bản dịch từ AI đã có sẵn dấu tiếng Việt (ví dụ: "Kim Bằng", "Bạch Hồ Tử", "Hải Thần Các") -> Giữ nguyên bản dịch có dấu
       const hasAccents = typeof hasVietnameseAccents === "function" ? hasVietnameseAccents(vi) : /[àáảãạăắằẳẵặâấầẩẫậèéẻẽẹêếềểễệìíỉĩịòóỏõọôốồổỗộơớờởỡợùúủũụưứừửữựỳýỷỹỵđÀÁẢÃẠĂẮẰẲẴẶÂẤẦẨẪẬÈÉẺẼẸÊẾỀỂỄỆÌÍỈĨỊÒÓỎÕỌÔỐỒỔỖỘƠỚỜỞỠỢÙÚỦŨỤƯỨỪỬỮỰỲÝỶỸỴĐ]/.test(vi);
       if (hasAccents) {
         viTranslated = vi;
@@ -678,13 +636,10 @@ function processAndFilterNames(namesArray, type, foreignReadingCategories) {
         const dictTranslation = translateChineseToHanViet(cn);
         
         if (isCleanCapitalizedLatin && dictTranslation) {
-          // Nếu AI trả về tên tiếng Việt không dấu (như "Thai Than" cho "Thái Thản", "Ngon Thieu Triet" cho "Ngôn Thiếu Triết", "Mong Hong Tran" cho "Mộng Hồng Trần", "Ngau Thien" cho "Ngưu Thiên", "Mac An" cho "Mục Ân")
-          // thì tự động THAY THẾ bằng bản dịch Hán-Việt CÓ DẤU từ từ điển local!
           const isUnaccentedVariant = typeof isUnaccentedHanVietVariant === "function" ? isUnaccentedHanVietVariant(vi, dictTranslation) : false;
           if (isUnaccentedVariant) {
             viTranslated = dictTranslation;
           } else {
-            // Ngược lại, là tên phiên âm Anime/Quốc tế xịn (như "Kakuzu", "Naruto", "Marco", "Imu") -> Giữ tên AI!
             viTranslated = vi;
           }
         } else if (dictTranslation) {
@@ -694,41 +649,33 @@ function processAndFilterNames(namesArray, type, foreignReadingCategories) {
         }
       }
     } else {
-      // Đông phương hoặc category không giữ spelling -> Tra cứu từ điển Hán Việt local
       const dictTranslation = translateChineseToHanViet(cn);
       if (dictTranslation) {
         viTranslated = dictTranslation;
       } else {
-        // Viết hoa chữ cái đầu nếu AI trả về chữ viết thường
         viTranslated = vi.split(/\s+/).map(w => w ? w.charAt(0).toUpperCase() + w.slice(1) : "").join(" ");
       }
     }
     
-    // Áp dụng định dạng chuẩn hóa chức vụ/bối phận và "Li/Ly"
     if (typeof cleanTranslation === "function") {
       viTranslated = cleanTranslation(viTranslated);
     }
     
-    // 1. Kiểm tra từ cấm – fast path O(1)
     const cnLower = cn.toLowerCase();
     const viRawLower = viRaw.toLowerCase();
     const viTransLower = viTranslated.toLowerCase();
     if (isIgnoredItem(cnLower, viRawLower) || isIgnoredItem(cnLower, viTransLower)) return;
     
-    // Nếu từ đã tồn tại trong từ điển tích lũy thì BỎ QUA KHÔNG ĐƯA VÀO BẢNG KẾT QUẢ (để chỉ hiển thị từ mới)
     if (referenceDictMap.has(cn)) {
       return;
     }
     
-    // Lưu nghĩa hiển thị thực tế vào biến vi
     vi = viTranslated;
     
-    // Áp dụng chuẩn hóa viết hoa danh hiệu/bối phận Hán Việt (chỉ viết hoa tên/họ đứng trước)
     if (type === "eastern" || !isForeignCat) {
       vi = formatHonorifics(vi);
     }
     
-    // Chạy Bộ lọc thông minh bẫy rác Hán Việt (Lớp 2.2)
     const isClean = isProperName(cn, vi, type);
     
     if (isClean) {
@@ -744,7 +691,6 @@ function mergeIntoList(list, item) {
   const existing = list.find(x => x.chinese === item.chinese);
   if (existing) {
     existing.count += item.count;
-    // Cập nhật lại nghĩa nếu nghĩa cũ ngắn hơn hoặc chưa chuẩn
     if (item.hanviet && (!existing.hanviet || existing.hanviet.length < item.hanviet.length)) {
       existing.hanviet = item.hanviet;
     }
@@ -773,13 +719,10 @@ function initVirtualScroll(tbodyId, list, colType) {
   const st = vsState[colType];
   st.page = 0;
 
-  // Dừng observer cũ
   if (st.observer) { st.observer.disconnect(); st.observer = null; }
 
-  // Render trang đầu
   appendVSRows(tbody, list, colType, 0);
 
-  // Nếu còn dữ liệu, gắn sentinel để auto-load khi scroll xuống
   if (list.length > VS_PAGE_SIZE) {
     attachSentinel(tbody, list, colType);
   }
@@ -795,7 +738,6 @@ function appendVSRows(tbody, list, colType, startIdx) {
   for (let i = startIdx; i < end; i++) {
     frag.appendChild(buildRow(list[i], colType));
   }
-  // Xóa sentinel cũ (nếu có) trước khi thêm row mới
   const old = tbody.querySelector('.vs-sentinel');
   if (old) tbody.removeChild(old);
 
@@ -822,7 +764,6 @@ function attachSentinel(tbody, list, colType) {
     }
     appendVSRows(tbody, list, colType, nextStart);
     lucide.createIcons({ nodes: [tbody] });
-    // Nếu vẫn còn dữ liệu, gắn lại sentinel
     if ((st.page + 1) * VS_PAGE_SIZE < list.length) {
       attachSentinel(tbody, list, colType);
     } else {
@@ -917,7 +858,6 @@ function moveItem(chinese, fromCol, toCol) {
   if (idx !== -1) {
     const item = fromList.splice(idx, 1)[0];
     
-    // Chuẩn hóa viết hoa chữ cái đầu khi đổi sang cột Sạch
     if (toCol === "clean") {
       item.hanviet = item.hanviet.split(" ").map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
     } else {
@@ -1002,7 +942,6 @@ function saveRowEdit() {
 
 // DOWNLOAD FILE & COPY TO CLIPBOARD
 function getFormattedText(list) {
-  // Trả về dạng Chinese=Vietnamese, mỗi dòng 1 từ
   return list.map(item => `${item.chinese}=${item.hanviet}`).join("\n");
 }
 
@@ -1018,65 +957,80 @@ function copyColumnToClipboard(colType) {
     .catch(err => alert("Lỗi sao chép: " + err));
 }
 
-function downloadColumnFile(colType) {
+function downloadColumnFile(colType, btnEvent) {
   const list = colType === "clean" ? cleanNamesList : trashNamesList;
-  if (list.length === 0 && colType === "trash") {
+  if (colType === "clean" && list.length === 0 && referenceDictMap.size === 0) {
+    alert("Không có dữ liệu để tải về!");
+    return;
+  }
+  if (colType === "trash" && list.length === 0) {
     alert("Bảng không có dữ liệu để tải!");
     return;
   }
   
-  let text = "";
-  if (colType === "clean") {
-    // Đảm bảo cập nhật danh sách từ cấm mới nhất
-    parseCustomRules();
+  parseCustomRules();
 
-    // Tạo bản gộp giữa từ điển tích lũy cũ và các từ mới trích xuất
-    const mergedMap = new Map();
-    
-    // 1. Nạp từ điển cũ vào, tự động lọc từ cấm, chuyển Li->Ly và viết thường bối phận
-    for (const [cn, vi] of referenceDictMap.entries()) {
-      const cnLower = cn.toLowerCase();
-      const viClean = cleanTranslation(vi);
-      const viLower = viClean.toLowerCase();
+  const targetBtn = (btnEvent && btnEvent.target) ? btnEvent.target.closest("button") : document.activeElement;
+  const originalHtml = targetBtn ? targetBtn.innerHTML : "";
+  if (targetBtn && targetBtn.tagName === "BUTTON") {
+    targetBtn.disabled = true;
+    targetBtn.innerHTML = '⏳ Đang gộp dữ liệu...';
+  }
+
+  setTimeout(() => {
+    let text = "";
+    if (colType === "clean") {
+      const mergedMap = new Map();
+      const hasRules = ignoreRulesSet.size > 0 || ignoreSubList.length > 0;
       
-      // Lọc bỏ từ cấm – fast path O(1)
-      if (isIgnoredItem(cnLower, viLower)) continue;
+      if (!hasRules) {
+        for (const [cn, vi] of referenceDictMap.entries()) {
+          mergedMap.set(cn, vi);
+        }
+      } else {
+        for (const [cn, vi] of referenceDictMap.entries()) {
+          const cnLower = cn.toLowerCase();
+          const viLower = vi.toLowerCase();
+          if (isIgnoredItem(cnLower, viLower)) continue;
+          mergedMap.set(cn, vi);
+        }
+      }
       
-      mergedMap.set(cn, viClean);
+      list.forEach(item => {
+        const cnLower = item.chinese.toLowerCase();
+        const viClean = cleanTranslation(item.hanviet);
+        const viLower = viClean.toLowerCase();
+        if (hasRules && isIgnoredItem(cnLower, viLower)) return;
+        mergedMap.set(item.chinese, viClean);
+      });
+      
+      const lines = [];
+      mergedMap.forEach((vi, cn) => {
+        lines.push(`${cn}=${vi}`);
+      });
+      text = lines.join("\n");
+    } else {
+      text = getFormattedText(list);
     }
     
-    // 2. Nạp từ mới đã duyệt vào sau
-    list.forEach(item => {
-      const cnLower = item.chinese.toLowerCase();
-      const viClean = cleanTranslation(item.hanviet);
-      const viLower = viClean.toLowerCase();
-      
-      // Lọc bỏ từ cấm – fast path O(1)
-      if (isIgnoredItem(cnLower, viLower)) return;
-      
-      mergedMap.set(item.chinese, viClean);
-    });
+    const blob = new Blob([text], { type: "text/plain;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
     
-    const lines = [];
-    mergedMap.forEach((vi, cn) => {
-      lines.push(`${cn}=${vi}`);
-    });
-    text = lines.join("\n");
-  } else {
-    text = getFormattedText(list);
-  }
-  
-  const blob = new Blob([text], { type: "text/plain;charset=utf-8" });
-  const url = URL.createObjectURL(blob);
-  
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = colType === "clean" ? uploadedFileName : "Names2.txt";
-  document.body.appendChild(a);
-  a.click();
-  
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = colType === "clean" ? (uploadedFileName || "Names.txt") : "Names2.txt";
+    document.body.appendChild(a);
+    a.click();
+    
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+
+    if (targetBtn && targetBtn.tagName === "BUTTON") {
+      targetBtn.disabled = false;
+      targetBtn.innerHTML = originalHtml;
+      if (typeof lucide !== "undefined" && lucide.createIcons) lucide.createIcons();
+    }
+  }, 10);
 }
 
 function exportBothFiles() {
@@ -1094,7 +1048,6 @@ function handleFileUpload(event) {
     const text = e.target.result;
     document.getElementById("raw-chinese-text").value = text;
     document.getElementById("input-char-count").innerText = `${text.length.toLocaleString()} ký tự`;
-    // Reset giá trị uploader để có thể tải lại cùng một file nếu cần
     event.target.value = "";
   };
   reader.onerror = function() {
@@ -1103,50 +1056,71 @@ function handleFileUpload(event) {
   reader.readAsText(file, "utf-8");
 }
 
-// Xử lý nạp file từ điển tích lũy gốc Names.txt
+// Xử lý nạp file từ điển tích lũy gốc Names.txt (siêu tốc ~90ms cho 138k từ, không đơ UI)
 function handleDictUpload(event) {
   const file = event.target.files[0];
   if (!file) return;
   
   uploadedFileName = file.name;
+  const statusEl = document.getElementById("dict-upload-status");
+  if (statusEl) statusEl.innerText = "⏳ Đang đọc file từ điển...";
+
   const reader = new FileReader();
   reader.onload = function(e) {
-    const text = e.target.result;
-    referenceDictMap.clear();
-    
-    // Nạp lại danh sách từ cấm mới nhất trước khi duyệt
-    parseCustomRules();
-    
-    const lines = text.split(/\r?\n/);
-    let count = 0;
-    lines.forEach(line => {
-      const trimmed = line.trim();
-      if (!trimmed || trimmed.startsWith("#")) return;
-      const idx = trimmed.indexOf("=");
-      if (idx > 0) {
-        const cn = trimmed.slice(0, idx).trim();
-        const vi = trimmed.slice(idx + 1).trim();
-        if (cn && vi) {
-          // Làm sạch bản dịch: chuyển Li -> Ly, viết thường bối phận
-          const viClean = cleanTranslation(vi);
-          
-          // Lỗi 1 đã sửa: khai báo biến trước khi gọi isIgnoredItem
-          const cnLower = cn.toLowerCase();
-          const viLower = viClean.toLowerCase();
-          if (isIgnoredItem(cnLower, viLower)) return;
-          
-          referenceDictMap.set(cn, viClean);
-          count++;
+    if (statusEl) statusEl.innerText = "⏳ Đang nạp từ điển (0%)...";
+
+    setTimeout(() => {
+      const text = e.target.result;
+      referenceDictMap.clear();
+      
+      parseCustomRules();
+      const hasRules = ignoreRulesSet.size > 0 || ignoreSubList.length > 0;
+      
+      const lines = text.split(/\r?\n/);
+      const totalLines = lines.length;
+      let count = 0;
+      let index = 0;
+      const BATCH_SIZE = 50000;
+
+      function processBatch() {
+        const end = Math.min(index + BATCH_SIZE, totalLines);
+        for (let i = index; i < end; i++) {
+          const line = lines[i];
+          const trimmed = line.trim();
+          if (!trimmed || trimmed.startsWith("#")) continue;
+          const idx = trimmed.indexOf("=");
+          if (idx > 0) {
+            const cn = trimmed.slice(0, idx).trim();
+            const vi = trimmed.slice(idx + 1).trim();
+            if (cn && vi) {
+              const viClean = (vi.includes("Li") || vi.includes("li")) ? safeReplaceLi(vi) : vi;
+              if (hasRules) {
+                const cnLower = cn.toLowerCase();
+                const viLower = viClean.toLowerCase();
+                if (isIgnoredItem(cnLower, viLower)) continue;
+              }
+              referenceDictMap.set(cn, viClean);
+              count++;
+            }
+          }
+        }
+
+        index = end;
+        if (index < totalLines) {
+          const pct = Math.floor((index / totalLines) * 100);
+          if (statusEl) statusEl.innerText = `⏳ Đang nạp... ${pct}% (${count.toLocaleString()}/${totalLines.toLocaleString()} từ)`;
+          setTimeout(processBatch, 0);
+        } else {
+          if (statusEl) statusEl.innerText = `✅ Đã nạp ${count.toLocaleString()} từ tích lũy (đã tự động làm sạch).`;
         }
       }
-    });
-    
-    document.getElementById("dict-upload-status").innerText = `Đã nạp ${count.toLocaleString()} từ tích lũy (đã tự động làm sạch).`;
-    event.target.value = "";
+
+      processBatch();
+      event.target.value = "";
+    }, 10);
   };
   reader.onerror = function() {
     alert("Không thể đọc file từ điển. Vui lòng kiểm tra định dạng!");
   };
   reader.readAsText(file, "utf-8");
 }
-

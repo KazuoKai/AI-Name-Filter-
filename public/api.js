@@ -1,4 +1,4 @@
-﻿// api.js - Quản lý cuộc gọi API, chia nhỏ văn bản và xếp hàng đợi song song
+// api.js - Quản lý cuộc gọi API, chia nhỏ văn bản và xếp hàng đợi song song
 
 // Hàm chia văn bản thành các chunk có độ dài và độ lặp lại chỉ định
 function splitTextIntoChunks(text, chunkSize, overlap) {
@@ -129,7 +129,10 @@ function buildSystemPrompt(mode, type, foreignReadingCategories) {
     "Rules:",
     ...modeRules,
     "- Keep chinese exactly as it appears in the source.",
-    "- Extract all character names (e.g., 方见贤), martial arts techniques/skills/gongfa (e.g., 云极拳, 云无穷拳), weapons, sects, creatures (e.g., 黄金鳄王 instead of 十万年黄金鳄王), and places. Strip surrounding book title quotes 《》, “”, or 【】 and age/duration prefixes (e.g., 十万年, 万年, 千年, 百年) from the extracted Chinese entity.",
+    "- Extract all character names (e.g. 方见贤, 王贵, 萧炎, 叶凡 — never skip 2-character person names), martial arts techniques/skills/gongfa (e.g. 云极拳, 六脉神指, 寂灭指, 乾坤指, 一阳指 — always extract skills ending with 指, 掌, 剑, 刀, 术, 法), sects/factions (e.g. 羽化门, 青云门, 太清门, 蜀山派, 天道宗, 唐家 — always extract sects ending with 门, 派, 宗, 谷, 宫, 阁, 堂, 院), weapons, creatures, and places. Strip surrounding book title quotes 《》, “”, or 【】 and age/duration prefixes (e.g. 十万年, 万年, 千年, 百年) from the extracted Chinese entity.",
+    "- CRITICAL: Always extract 2-character Chinese person names (e.g. 王贵). Do not assume short names are generic words.",
+    "- CRITICAL: Always extract Sect/Faction names (Category: Faction), especially those ending with 门 (e.g. 羽化门), 派, 宗, 谷, 宫.",
+    "- CRITICAL: Always extract Skill/Technique names (Category: Skill), especially finger skills ending with 指 (e.g. 六脉神指, 寂灭指, 乾坤指, 一阳指).",
     ...typeRules,
     "- Do not merge different Chinese spellings even if they may refer to the same entity.",
     "- Do not drop a valid entity just because its count is 1.",
